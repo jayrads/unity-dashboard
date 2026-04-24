@@ -2076,7 +2076,7 @@ initTableTouchLock();
 
 // ── Orientation / resize handling ────────────────────────────────────────
 (function(){
-  let lastW=window.innerWidth, lastH=window.innerHeight;
+  let lastW=window.innerWidth;
 
   function doReflow(){
     // Force container to recalculate width
@@ -2090,14 +2090,15 @@ initTableTouchLock();
     [barChart,pieChart,timeChart].forEach(c=>{ if(c) c.resize(); });
     Object.values(expandCharts).forEach(c=>{ if(c) c.resize(); });
     if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
-    lastW=window.innerWidth; lastH=window.innerHeight;
+    lastW=window.innerWidth;
   }
 
   let resizeTimer;
   window.addEventListener('resize', ()=>{
-    // Only trigger on actual dimension changes — ignore scroll-triggered resize on mobile
-    const w=window.innerWidth, h=window.innerHeight;
-    if(w===lastW&&h===lastH) return;
+    // Only trigger on WIDTH changes — iOS Safari fires resize on scroll when
+    // the address bar shows/hides (height changes) which we want to ignore
+    const w=window.innerWidth;
+    if(w===lastW) return;
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(doReflow, 200);
   });
