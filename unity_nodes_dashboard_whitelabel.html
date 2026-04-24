@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity Nodes Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Roboto:wght@400;500&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Theme variables ── */
+  :root {
+    --bg-page:    #f5f5f0;
+    --bg-card:    #ffffff;
+    --bg-input:   #fafaf8;
+    --bg-metric:  #eeeee9;
+    --bg-thead:   #fafaf8;
+    --bg-row-alt: #fafaf8;
+    --text-main:  #1a1a1a;
+    --text-mid:   #555555;
+    --text-muted: #888888;
+    --text-light: #bbbbbb;
+    --border:     #dddddd;
+    --border-mid: #cccccc;
+    --shadow:     rgba(0,0,0,0.06);
+  }
+  body.dark {
+    --bg-page:    #1a1a1a;
+    --bg-card:    #252525;
+    --bg-input:   #2e2e2e;
+    --bg-metric:  #2a2a2a;
+    --bg-thead:   #2e2e2e;
+    --bg-row-alt: #2e2e2e;
+    --text-main:  #e8e8e8;
+    --text-mid:   #aaaaaa;
+    --text-muted: #777777;
+    --text-light: #555555;
+    --border:     #3a3a3a;
+    --border-mid: #444444;
+    --shadow:     rgba(0,0,0,0.3);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-main);
+    font-size: 14px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px 20px; }
+
+  /* ── Dashboard selector bar ── */
+  .dash-bar-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .dash-bar-top .spacer { flex: 1; }
+  .dash-bar-bottom { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .a11y-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .a11y-select { font-size: 12px; padding: 5px 8px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); cursor: pointer; }
+  .a11y-select:focus { outline: none; border-color: #999; }
+  .theme-group { display: flex; border-radius: 8px; overflow: hidden; border: 0.5px solid var(--border-mid); }
+  .theme-btn { padding: 5px 11px; font-size: 12px; border: none; background: var(--bg-card); color: var(--text-mid); cursor: pointer; border-right: 0.5px solid var(--border-mid); white-space: nowrap; }
+  .theme-btn:last-child { border-right: none; }
+  .theme-btn:hover { background: var(--bg-metric); color: var(--text-main); }
+  .theme-btn.active { background: #1F4E79; color: #fff; }
+  /* ── Leaderboard filters ── */
+  .lb-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .lb-filters label { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
+  body.dark .lb-filters label { color: var(--text-main) !important; font-size: 13px !important; }
+  .lb-name-filter { font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); width: 180px; }
+  .lb-name-filter:focus { outline: none; border-color: #999; }
+  /* Category multiselect dropdown */
+  .cat-filter-wrap { position: relative; }
+  .cat-filter-btn { font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); cursor: pointer; white-space: nowrap; min-width: 130px; text-align: left; }
+  .cat-filter-btn:hover { background: var(--bg-metric); }
+  .cat-filter-btn.has-filter { border-color: #2E75B6; color: #2E75B6; font-weight: 500; }
+  .cat-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 180px; background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px var(--shadow); z-index: 50; padding: 6px 0; }
+  .cat-dropdown.open { display: block; }
+  .cat-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 12px; color: var(--text-main); cursor: pointer; }
+  .cat-dropdown-item:hover { background: var(--bg-metric); }
+  .cat-dropdown-item input[type=checkbox] { cursor: pointer; }
+  .cat-dropdown-clear { padding: 5px 14px; font-size: 11px; color: var(--text-muted); border-top: 0.5px solid var(--border); margin-top: 4px; cursor: pointer; }
+  .cat-dropdown-clear:hover { color: var(--text-main); }
+  .dash-bar label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .dash-select { font-size: 14px; font-weight: 500; padding: 6px 10px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); cursor: pointer; max-width: 280px; min-width: 140px; }
+  .dash-select:focus { outline: none; border-color: var(--text-light); }
+  .dash-name-input { font-size: 14px; font-weight: 500; border: 0.5px solid #999; border-radius: 8px; padding: 6px 10px; background: var(--bg-card); color: var(--text-main); display: none; outline: none; width: 200px; }
+  .dash-bar-hint { font-size: 11px; color: var(--text-light); margin-left: 2px; }
+
+  /* ── Edit table mobile scroll ── */
+  .mapping-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mapping-table { min-width: 560px; }
+
+  .import-accordion-toggle { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 6px 0 0; margin-top: 6px; }
+  .import-accordion-toggle:hover { color: var(--text-main); }
+  .import-accordion-toggle .toggle-chevron { font-size: 10px; transition: transform 0.15s; display: inline-block; }
+  .import-accordion-toggle.open .toggle-chevron { transform: rotate(90deg); }
+  .import-accordion-body { display: none; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  .import-accordion-body.open { display: block; }
+  .import-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .import-header span { font-size: 13px; color: var(--text-mid); }
+  textarea { width: 100%; height: 110px; font-family: monospace; font-size: 12px; border: 0.5px solid var(--border-mid); border-radius: 8px; padding: 10px; resize: vertical; background: var(--bg-input); color: var(--text-main); }
+  textarea:focus { outline: none; border-color: var(--text-light); }
+  .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  button { cursor: pointer; padding: 7px 16px; border-radius: 8px; border: 0.5px solid var(--border-mid); background: transparent; font-size: 13px; color: var(--text-main); }
+  button:hover { background: var(--bg-metric); }
+  .btn-danger { border-color: #f0a0a0; color: #c0392b; }
+  .btn-danger:hover { background: #fdf0f0; }
+  .btn-export { border-color: #aacfee; color: #185fa5; }
+  .btn-export:hover { background: #eaf3fb; }
+  .status { font-size: 12px; color: var(--text-muted); }
+  .status.ok { color: #1d7a4a; }
+  .status.warn { color: #b36a00; }
+
+  .token-box { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .token-box-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .token-box label { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
+  .token-box input { flex: 1; min-width: 200px; font-family: monospace; font-size: 12px; padding: 6px 10px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-input); color: var(--text-main); }
+  .token-box input:focus { outline: none; border-color: var(--text-light); }
+  .token-hint { font-size: 11px; color: var(--text-light); margin-top: 6px; }
+  .btn-refresh { border-color: #b3d9b3; color: #1d7a4a; font-weight: 500; }
+  .btn-refresh:hover { background: #edf7ed; }
+  .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
+  .fetch-status { font-size: 12px; color: var(--text-muted); margin-top: 6px; min-height: 16px; }
+
+  .filter-row { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .filter-row label { font-size: 12px; color: var(--text-muted); margin-right: 4px; }
+  .fbtn { padding: 5px 12px; font-size: 12px; border-radius: 8px; border: 0.5px solid var(--border-mid); background: transparent; color: var(--text-mid); cursor: pointer; white-space: nowrap; }
+  .fbtn:hover { background: var(--bg-metric); }
+  .fbtn.active { background: var(--bg-metric); color: var(--text-main); font-weight: 500; border-color: #aaa; }
+
+  .custom-range { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .custom-range label { font-size: 12px; color: var(--text-muted); }
+  .custom-range input[type="date"] { font-size: 12px; padding: 4px 8px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-input); color: var(--text-main); cursor: pointer; }
+  .custom-range input[type="date"]:focus { outline: none; border-color: var(--text-light); }
+  .custom-range-sep { width: 0.5px; height: 20px; background: var(--border); margin: 0 4px; }
+  .days-back-input { width: 54px; font-size: 12px; padding: 4px 8px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-input); color: var(--text-main); text-align: center; }
+  .days-back-input:focus { outline: none; border-color: var(--text-light); }
+  .days-back-input.active { border-color: #2E75B6; background: var(--bg-card); }
+  .range-label { font-size: 11px; color: var(--text-light); margin-left: 2px; }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media(max-width:640px){ .metric-grid { grid-template-columns: repeat(2,1fr); } }
+  .metric { background: var(--bg-metric); border-radius: 8px; padding: 14px 16px; position: relative; }
+  .metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+  .metric-value { font-size: 20px; font-weight: 500; }
+  .metric-sub { font-size: 11px; color: var(--text-main); margin-top: 2px; }
+  .metric-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 200px; background: #1a1a1a; color: #f0f0f0; font-size: 11px; padding: 7px 10px; border-radius: 7px; z-index: 100; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.3); pointer-events: none; }
+  .metric:hover .metric-tip { display: block; }
+  body.dark .metric-tip { background: #ffffff; color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media(max-width:700px){ .chart-row { grid-template-columns: 1fr; } }
+  .chart-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px; }
+  .chart-title { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .li { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-mid); }
+  .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  .section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px; }
+  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 12px; border-bottom: 0.5px solid var(--border); background: var(--bg-input); white-space: nowrap; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--text-main); background: #f0f0eb; }
+  .sort-icon { font-size: 10px; margin-left: 3px; color: #ccc; }
+  th.sorted-asc  .sort-icon { color: #378ADD; }
+  th.sorted-desc .sort-icon { color: #378ADD; }
+  td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-input); }
+  .bar-bg { background: #eee; border-radius: 2px; height: 5px; width: 100%; margin-top: 3px; }
+  .bar-fill { border-radius: 2px; height: 5px; }
+  /* Leaderboard: non-device cols are 1px smaller than device col */
+  .lb-table td { font-size: calc(1em - 1px); }
+  .lb-table td.td-device { font-size: 1em; }
+
+  #dashboard { display: none; }
+  .empty { font-size: 13px; color: var(--text-light); padding: 20px 0; text-align: center; }
+
+  .settings-panel { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .settings-toggle { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+  .settings-toggle span { font-size: 13px; color: var(--text-mid); font-weight: 500; }
+  .settings-toggle .toggle-icon { font-size: 12px; color: var(--text-light); transition: transform 0.2s; }
+  .settings-body { display: none; margin-top: 14px; }
+  .settings-body.open { display: block; }
+  .settings-section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 14px 0 8px; }
+  .settings-section-title:first-child { margin-top: 0; }
+  .mapping-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+  .mapping-table th { text-align: left; font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 0.5px solid var(--border); }
+  .mapping-table td { padding: 4px 4px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .mapping-table tr:last-child td { border-bottom: none; }
+  .mapping-table input[type=text] { width: 100%; font-size: 12px; padding: 4px 7px; border: 0.5px solid var(--border); border-radius: 5px; background: var(--bg-input); color: var(--text-main); font-family: inherit; }
+  .mapping-table input[type=text]:focus { outline: none; border-color: var(--text-light); }
+  .mapping-table input[type=text].mono { font-family: monospace; font-size: 11px; }
+  .mapping-table input[type=color] { width: 36px; height: 26px; border: 0.5px solid var(--border); border-radius: 5px; padding: 1px; cursor: pointer; background: var(--bg-input); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; border: 0.5px solid var(--border-mid); background: transparent; cursor: pointer; color: var(--text-mid); }
+  .btn-sm:hover { background: var(--bg-metric); }
+  .btn-sm.danger { border-color: #f0a0a0; color: #c0392b; }
+  .btn-sm.danger:hover { background: #fdf0f0; }
+  .btn-sm.primary { border-color: #aacfee; color: #185fa5; }
+  .btn-sm.primary:hover { background: #eaf3fb; }
+  .settings-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .dash-options-section { margin-top: 18px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+  .floor-date-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .floor-date-row input[type=date] { font-size: 12px; padding: 5px 8px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); cursor: pointer; }
+  .floor-date-row input[type=date]:focus { outline: none; border-color: #999; }
+  .floor-date-hint { font-size: 11px; color: var(--text-muted); }
+  .floor-clear-btn { font-size: 11px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0; }
+  .floor-clear-btn:hover { color: var(--text-main); }
+  .settings-save-status { font-size: 11px; color: #1d7a4a; }
+  .id-col { width: 190px; }
+  .name-col { width: 120px; }
+  .group-col { width: 130px; }
+  .hide-col { width: 46px; text-align: center; }
+  .clr-col { width: 32px; text-align: center; }
+  .color-col { width: 50px; text-align: center; }
+  .del-col { width: 32px; text-align: center; }
+  /* Editable fields get white bg, read-only get muted */
+  .mapping-table input[type=text].editable { background: var(--bg-card); border-color: #ccc; }
+  .mapping-table input[type=text].readonly { background: var(--bg-metric); color: var(--text-muted); cursor: default; border-color: #e0e0e0; }
+  .mapping-table select.group-select { width: 100%; font-size: 12px; padding: 4px 6px; border: 0.5px solid var(--border-mid); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-family: inherit; cursor: pointer; }
+  .mapping-table select.group-select:focus { outline: none; border-color: var(--text-light); }
+  .hide-check { width: 15px; height: 15px; cursor: pointer; }
+  .mapping-filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .mapping-filter-row input[type=text] { width:50%; font-size:12px; padding:5px 10px; border:0.5px solid #ccc; border-radius:8px; background:#fff; color:#1a1a1a; font-family:inherit; }
+  .mapping-filter-row input[type=text]:focus { outline:none; border-color:#999; }
+  .mapping-filter-clear { font-size:11px; color:#999; cursor:pointer; padding:0 4px; background:none; border:none; }
+  .mapping-filter-clear:hover { color:#555; }
+  .show-hidden-label { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-mid); cursor:pointer; white-space:nowrap; user-select:none; }
+  .show-hidden-label input { cursor:pointer; }
+  .mapping-table th.map-sortable { cursor:pointer; user-select:none; }
+  .mapping-table th.map-sortable:hover { color:var(--text-main); background:var(--bg-metric); }
+  .map-sort-icon { font-size:9px; margin-left:2px; color:#ccc; }
+  .map-sorted-asc  .map-sort-icon { color:#378ADD; }
+  .map-sorted-desc .map-sort-icon { color:#378ADD; }
+  .btn-edit { padding:3px 9px; font-size:10px; border-radius:5px; border:0.5px solid #aacfee; background:transparent; color:#185fa5; cursor:pointer; white-space:nowrap; }
+  .btn-edit:hover { background:#eaf3fb; }
+  .btn-chevron { padding:3px 7px; font-size:12px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; transition:transform 0.15s; line-height:1; }
+  .btn-chevron:hover { color:var(--text-main); }
+  .btn-chevron.open { transform:rotate(90deg); }
+  .expand-row td { padding:0 !important; border-bottom:0.5px solid var(--border); background:var(--bg-metric); }
+  .expand-inner { padding:14px 20px 18px; }
+  .expand-title { font-size:12px; font-weight:500; color:var(--text-mid); margin-bottom:10px; }
+  .expand-chart-wrap { position:relative; width:100%; height:140px; margin-bottom:12px; }
+  .expand-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .expand-table th { text-align:left; font-size:10px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; padding:4px 8px; border-bottom:0.5px solid var(--border); }
+  .expand-table td { padding:4px 8px; border-bottom:0.5px solid var(--border); color:var(--text-main); }
+  .expand-table tr:last-child td { border-bottom:none; }
+  .expand-table tr.best-day td { color:#F0A500; font-weight:500; }
+  .expand-table tr:hover td { background:var(--bg-card); }
+  /* Split filter */
+  .split-filter-row { display:none; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .split-filter-row label { font-size:12px; color:var(--text-mid); white-space:nowrap; }
+  body.dark .split-filter-row label { color:var(--text-main) !important; font-size:13px !important; }
+  .split-filter-options { display:flex; gap:6px; flex-wrap:wrap; }
+  .split-check-label { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-mid); padding:3px 10px; border:0.5px solid var(--border-mid); border-radius:8px; cursor:pointer; user-select:none; background:var(--bg-card); }
+  .split-check-label:hover { background:var(--bg-metric); }
+  .split-check-label input { cursor:pointer; }
+  .split-check-label.checked { background:var(--bg-metric); border-color:#aaa; font-weight:500; color:var(--text-main); }
+  /* Tooltip for notes */
+  .note-icon { display:inline-block; font-size:11px; color:#aaa; margin-left:5px; cursor:default; position:relative; }
+  .note-icon:hover { color:#555; }
+  .note-icon .note-tip { display:none; position:absolute; left:0; top:20px; min-width:180px; max-width:280px; background:#1a1a1a; color:#f0f0f0; font-size:11px; padding:7px 10px; border-radius:7px; z-index:100; white-space:pre-wrap; line-height:1.5; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+  .note-icon:hover .note-tip { display:block; }
+  body.dark .note-icon .note-tip { background:#ffffff; color:#1a1a1a; box-shadow:0 2px 8px rgba(0,0,0,0.5); }
+  /* Blue buttons in dark mode — light text for contrast */
+  body.dark .btn-export { color:#a8d4f5; border-color:#4a8ab5; }
+  body.dark .btn-export:hover { background:rgba(255,255,255,0.08); color:#d0eaff; }
+  body.dark .btn-edit { color:#a8d4f5; border-color:#4a8ab5; }
+  body.dark .btn-edit:hover { background:rgba(255,255,255,0.08); color:#d0eaff; }
+  body.dark .btn-sm.primary { color:#a8d4f5; border-color:#4a8ab5; }
+  body.dark .btn-sm.primary:hover { background:rgba(255,255,255,0.08); color:#d0eaff; }
+  body.dark .cat-filter-btn.has-filter { color:#a8d4f5; border-color:#4a8ab5; }
+  body.dark .a11y-select, body.dark .dash-select { color:var(--text-main); }
+  /* split + notes cols in settings table */
+  .split-col { width:70px; text-align:center; }
+  .notes-col { width:180px; }
+  .mapping-table input[type=number] { width:100%; font-size:12px; padding:4px 7px; border:0.5px solid #ccc; border-radius:5px; background:#fff; color:#1a1a1a; text-align:center; }
+  .mapping-table textarea.notes-input { width:100%; font-size:11px; padding:4px 7px; border:0.5px solid #ccc; border-radius:5px; background:#fff; color:#1a1a1a; resize:vertical; height:45px; min-height:38px; font-family:inherit; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Top row: dashboard controls + theme right-justified -->
+  <div class="dash-bar-top">
+    <label>Dashboard:</label>
+    <select class="dash-select" id="dash-select" onchange="switchDash(this.value)"></select>
+    <input class="dash-name-input" id="dash-name-input"
+      onblur="finishEditDashName()"
+      onkeydown="if(event.key==='Enter')finishEditDashName();if(event.key==='Escape')cancelEditDashName();" />
+    <button onclick="newDashboard()">+ New</button>
+    <button onclick="startEditDashName()">Rename</button>
+    <button class="btn-danger" onclick="deleteDash(currentDash)">Delete</button>
+    <span class="dash-bar-hint" id="dash-bar-hint"></span>
+    <div class="spacer"></div>
+    <div class="theme-group">
+      <button class="theme-btn" id="theme-light" onclick="applyTheme('light')">☀ Light</button>
+      <button class="theme-btn" id="theme-dark"  onclick="applyTheme('dark')">🌙 Dark</button>
+    </div>
+  </div>
+  <!-- Bottom row: font + size -->
+  <div class="dash-bar-bottom">
+    <span class="a11y-label">Font:</span>
+    <select class="a11y-select" id="font-select" onchange="applyFont(this.value)">
+      <option value="system">System default</option>
+      <option value="'Segoe UI',sans-serif">Segoe UI</option>
+      <option value="Arial,sans-serif">Arial</option>
+      <option value="'Helvetica Neue',Helvetica,sans-serif">Helvetica</option>
+      <option value="'Inter',sans-serif">Inter</option>
+      <option value="'Roboto',sans-serif">Roboto</option>
+      <option value="'Open Sans',sans-serif">Open Sans</option>
+      <option value="Verdana,sans-serif">Verdana</option>
+      <option value="Tahoma,sans-serif">Tahoma</option>
+    </select>
+    <span class="a11y-label">Size:</span>
+    <select class="a11y-select" id="size-select" onchange="applySize(this.value)">
+      <option value="12">SM</option>
+      <option value="14" selected>MD</option>
+      <option value="16">LG</option>
+      <option value="18">XL</option>
+      <option value="20">XXL</option>
+    </select>
+  </div>
+
+  <div class="token-box">
+    <div class="token-box-row">
+      <label>Refresh token:</label>
+      <input type="password" id="refresh-token-input" placeholder="Paste refresh_token from sb-api-auth-token in localStorage — auto-saved">
+      <button class="btn-refresh" id="refresh-btn" onclick="fetchAll()">&#8635; Refresh data</button>
+    </div>
+    <div class="token-hint">Dev tools &rarr; Application &rarr; Local Storage &rarr; <code>sb-api-auth-token</code> &rarr; copy <code>refresh_token</code> value</div>
+    <div class="fetch-status" id="fetch-status"></div>
+    <button class="import-accordion-toggle" id="import-toggle" onclick="toggleImportAccordion()">
+      <span class="toggle-chevron">▶</span> Manual import / export
+    </button>
+    <div class="import-accordion-body" id="import-accordion-body">
+      <div class="import-header">
+        <span>Paste API response JSON</span>
+        <button class="btn-danger" onclick="clearAll()">Reset all data</button>
+      </div>
+      <textarea id="json-input" placeholder='[{"id":"...","licenseId":"...","amountMicros":...,"completedAt":"..."}, ...]'></textarea>
+      <div class="btn-row">
+        <button onclick="importData()">Import ↗</button>
+        <button class="btn-export" onclick="exportJSON()">Export JSON</button>
+        <button class="btn-export" onclick="exportCSV()">Export CSV</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-panel">
+    <div class="settings-toggle" onclick="toggleSettings()">
+      <span>⚙ Device &amp; Category Settings</span>
+      <span class="toggle-icon" id="settings-icon">▼</span>
+    </div>
+    <div class="settings-body" id="settings-body">
+
+      <div class="settings-section-title">Device names</div>
+      <p style="font-size:11px;color:#999;margin-bottom:8px;">Assign a name and category to each license. Unnamed licenses show as <code style="font-size:11px">0x1234...d6ba</code>.</p>
+      <div class="mapping-filter-row">
+        <input type="text" id="mapping-filter" placeholder="Filter by license ID, name, or category…" oninput="applyMappingFilter()">
+        <button class="mapping-filter-clear" onclick="clearMappingFilter()" title="Clear filter">✕</button>
+        <label class="show-hidden-label">
+          <input type="checkbox" id="show-hidden-check" onchange="applyMappingVisibility()"> Show hidden
+        </label>
+      </div>
+      <div class="mapping-table-wrap"><table class="mapping-table" id="mapping-table">
+        <thead><tr>
+          <th class="id-col map-sortable" onclick="sortMappingTable('id',this)">License ID<span class="map-sort-icon">↕</span></th>
+          <th class="name-col map-sortable" onclick="sortMappingTable('name',this)">Device name<span class="map-sort-icon">↕</span></th>
+          <th class="group-col map-sortable" onclick="sortMappingTable('group',this)">Category<span class="map-sort-icon">↕</span></th>
+          <th class="split-col map-sortable" onclick="sortMappingTable('split',this)" title="UNO split % (node operator share)">UNO %<span class="map-sort-icon">↕</span></th>
+          <th class="notes-col">Notes</th>
+          <th class="hide-col" title="Hide from dashboard">Hide</th>
+          <th class="clr-col" title="Clear name and category">↺</th>
+        </tr></thead>
+        <tbody id="mapping-tbody"></tbody>
+      </table></div>
+      <button class="btn-sm primary" onclick="addMappingRow()">+ Add device</button>
+
+      <div class="settings-section-title" style="margin-top:18px;">Categories &amp; colors</div>
+      <p style="font-size:11px;color:#999;margin-bottom:8px;">Define categories and their chart colors. The <strong>Default</strong> category cannot be removed.</p>
+      <table class="mapping-table">
+        <thead><tr>
+          <th class="name-col">Category name</th>
+          <th class="color-col">Color</th>
+          <th class="del-col"></th>
+        </tr></thead>
+        <tbody id="groups-tbody"></tbody>
+      </table>
+      <button class="btn-sm primary" onclick="addGroupRow()">+ Add category</button>
+
+      <div class="dash-options-section">
+        <div class="settings-section-title">Dashboard options</div>
+        <div class="floor-date-row">
+          <label style="font-size:12px;color:var(--text-mid);white-space:nowrap;">Min date (floor):</label>
+          <input type="date" id="floor-date-input" onchange="saveFloorDate(this.value)">
+          <button class="floor-clear-btn" onclick="clearFloorDate()" title="Clear floor date">✕ Clear</button>
+          <span class="floor-date-hint" id="floor-date-hint"></span>
+        </div>
+        <div class="floor-date-row" style="margin-top:8px;">
+          <label style="font-size:12px;color:var(--text-mid);white-space:nowrap;">Date display:</label>
+          <select id="date-offset-input" style="font-size:12px;padding:5px 8px;border:0.5px solid var(--border-mid);border-radius:8px;background:var(--bg-card);color:var(--text-main);cursor:pointer;" onchange="saveDateOffset(this.value)">
+            <option value="-1">Work Date (day before reward)</option>
+            <option value="0">Reward Date (as recorded)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn-sm primary" onclick="saveSettings()">Save settings</button>
+        <button class="btn-sm" onclick="importMappingCSV()">Import CSV</button>
+        <button class="btn-sm" onclick="exportMappingCSV()">Export CSV</button>
+        <span class="settings-save-status" id="settings-save-status"></span>
+      </div>
+      <p style="font-size:10px;color:#bbb;margin-top:8px;">CSV format: license_id, device_name, category_name, hidden (0 or 1), uno_split, notes</p>
+    </div>
+  </div>
+
+
+
+  <div id="dashboard">
+    <div class="filter-row">
+      <label>Show:</label>
+      <button class="fbtn" onclick="setPreset('prev',this)">Prev day</button>
+      <button class="fbtn" onclick="setPreset(7,this)">Last 7 days</button>
+      <button class="fbtn" onclick="setPreset(14,this)">Last 14 days</button>
+      <button class="fbtn" onclick="setPreset(30,this)">Last 30 days</button>
+      <button class="fbtn active" onclick="setPreset(0,this)">All time</button>
+    </div>
+    <div class="custom-range">
+      <label>Custom:</label>
+      <input type="date" id="date-from" onchange="applyCustomRange()">
+      <span style="font-size:12px;color:#999">→</span>
+      <input type="date" id="date-to" onchange="applyCustomRange()">
+      <span class="range-label" id="range-label"></span>
+      <div class="custom-range-sep"></div>
+      <label>Days back:</label>
+      <input type="number" class="days-back-input" id="days-back-input" min="1" placeholder="e.g. 12"
+        oninput="applyDaysBack(this.value)" onkeydown="if(event.key==='Escape'){clearDaysBack();}">
+    </div>
+
+    <div class="metric-grid" id="metrics"></div>
+
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <div class="chart-title">Earnings by device</div>
+        <div id="leg-bar" class="legend"></div>
+        <div style="position:relative;width:100%;height:240px;"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Share by group</div>
+        <div id="leg-pie" class="legend"></div>
+        <div style="position:relative;width:100%;height:240px;"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-wrap" style="margin-bottom:16px;">
+      <div class="chart-title">Daily earnings</div>
+      <div style="position:relative;width:100%;height:170px;"><canvas id="timeChart"></canvas></div>
+    </div>
+
+    <div class="section-title">Per-device leaderboard</div>
+    <div class="lb-filters">
+      <label>Device:</label>
+      <input type="text" class="lb-name-filter" id="lb-name-filter" placeholder="Filter by name…" oninput="applyLbFilters()">
+
+      <label>Category:</label>
+      <div class="cat-filter-wrap" id="cat-filter-wrap">
+        <button class="cat-filter-btn" id="cat-filter-btn" onclick="toggleCatDropdown()">All categories ▾</button>
+        <div class="cat-dropdown" id="cat-dropdown">
+          <div id="cat-dropdown-items"></div>
+          <div class="cat-dropdown-clear" onclick="clearCatFilter()">Clear selection</div>
+        </div>
+      </div>
+
+      <div class="split-filter-row" id="split-filter-row" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:0;align-self:center;">
+        <label>UNO split:</label>
+        <div class="split-filter-options" id="split-filter-options"></div>
+        <button class="mapping-filter-clear" onclick="clearSplitFilter()" title="Clear">Clear</button>
+      </div>
+
+      <button class="mapping-filter-clear" id="lb-clear-all" onclick="clearAllLbFilters()" style="display:none;margin-left:4px;">✕ Clear all filters</button>
+    </div>
+    <div class="table-wrap">
+      <table class="lb-table">
+        <thead><tr>
+          <th style="width:28px"></th>
+          <th class="sortable" data-col="rank"  data-type="num" onclick="sortBy(this)">#<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="name"  data-type="str" onclick="sortBy(this)">Device<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="group" data-type="str" onclick="sortBy(this)">Category<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="split" data-type="num" style="text-align:right" onclick="sortBy(this)">UNO %<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="days"  data-type="num" style="text-align:right" onclick="sortBy(this)">Days<span class="sort-icon">↕</span></th>
+          <th class="sortable sorted-desc" data-col="total" data-type="num" style="text-align:right" onclick="sortBy(this)">Total<span class="sort-icon">↓</span></th>
+          <th class="sortable" data-col="avg"   data-type="num" style="text-align:right" onclick="sortBy(this)">Avg/day<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="max"   data-type="num" style="text-align:right" onclick="sortBy(this)">Best day<span class="sort-icon">↕</span></th>
+          <th style="min-width:100px">Share</th>
+          <th style="width:44px"></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end container -->
+
+<script>
+// ── Dashboard management ─────────────────────────────────────────────────
+const DB_INDEX_KEY='unity_db_index';
+const DEFAULT_DASH_NAME='My Dashboard';
+
+let currentDash=DEFAULT_DASH_NAME;
+
+function storageKey(type, name){ return 'unity_db_'+type+'_'+name; }
+function getStorageKey(){ return storageKey('entries', currentDash); }
+function getMappingKey(){ return storageKey('mapping', currentDash); }
+
+// Backwards compat with old single-dashboard keys
+const STORAGE_KEY='unity_nodes_entries';   // legacy — read on first load only
+const MAPPING_KEY='unity_nodes_mapping';   // legacy — read on first load only
+
+function getDashIndex(){
+  try{ const r=localStorage.getItem(DB_INDEX_KEY); return r?JSON.parse(r):[DEFAULT_DASH_NAME]; }
+  catch{ return [DEFAULT_DASH_NAME]; }
+}
+function saveDashIndex(list){
+  localStorage.setItem(DB_INDEX_KEY, JSON.stringify(list));
+}
+
+function uniqueDashName(desired, exclude=null){
+  const list=getDashIndex().filter(n=>n!==exclude);
+  if(!list.includes(desired)) return desired;
+  let i=1;
+  while(list.includes(desired+' ('+i+')')) i++;
+  return desired+' ('+i+')';
+}
+
+function renderDashSelect(){
+  const list=getDashIndex();
+  const sel=document.getElementById('dash-select');
+  sel.innerHTML=list.map(name=>`<option value="${name}"${name===currentDash?' selected':''}>${name}</option>`).join('');
+}
+
+function switchDash(name){
+  currentDash=name;
+  loadCurrentDash();
+  renderDashSelect();
+}
+
+function saveCurrentState(){
+  // Storage is already saved live; just ensure mapping is current
+}
+
+function loadCurrentDash(){
+  // Load mapping for this dashboard
+  loadMapping();
+  // Load entries
+  globalStored=loadStored();
+  // Reset filter state
+  filterMode='all'; filterDays=0; filterFrom=''; filterTo='';
+  activeCatFilters.clear(); activeSplitFilters.clear(); lbNameFilter='';
+  const nf=document.getElementById('lb-name-filter'); if(nf) nf.value='';
+  const dbi=document.getElementById('days-back-input'); if(dbi){ dbi.value=''; dbi.classList.remove('active'); }
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  const allBtn=document.querySelector('.fbtn[onclick*="setPreset(0"]');
+  if(allBtn) allBtn.classList.add('active');
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  document.getElementById('range-label').textContent='';
+  // Reset fetch status
+  document.getElementById('fetch-status').textContent='';
+  document.getElementById('status').textContent='';
+  if(Object.keys(globalStored).length>0){
+    document.getElementById('status').textContent=Object.keys(globalStored).length.toLocaleString()+' entries loaded.';
+    document.getElementById('status').className='status ok';
+    document.getElementById('dashboard').style.display='block';
+    renderDashboard(globalStored);
+  } else {
+    document.getElementById('dashboard').style.display='none';
+  }
+  renderMappingTable();
+  renderGroupsTable();
+
+}
+
+function newDashboard(){
+  const raw=prompt('New dashboard name:','');
+  if(!raw||!raw.trim()) return;
+  const name=uniqueDashName(raw.trim());
+  const list=getDashIndex();
+  list.push(name);
+  saveDashIndex(list);
+  switchDash(name);
+}
+
+function renameDashPrompt(name){
+  const raw=prompt('Rename dashboard:',name);
+  if(!raw||!raw.trim()||raw.trim()===name) return;
+  const newName=uniqueDashName(raw.trim(), name);
+  renameDash(name, newName);
+}
+
+function renameDash(oldName, newName){
+  // Move all storage keys
+  ['entries','mapping'].forEach(type=>{
+    const old=storageKey(type,oldName);
+    const val=localStorage.getItem(old);
+    if(val!==null){ localStorage.setItem(storageKey(type,newName),val); localStorage.removeItem(old); }
+  });
+  const list=getDashIndex().map(n=>n===oldName?newName:n);
+  saveDashIndex(list);
+  if(currentDash===oldName) currentDash=newName;
+  renderDashSelect();
+}
+
+function deleteDash(name){
+  const list=getDashIndex();
+  if(list.length<=1){ alert("Can't delete the only dashboard."); return; }
+  // Export first
+  const entries=loadStoredFor(name);
+  const mapping=loadMappingFor(name);
+  const bundle={_dashboardName:name,entries:Object.entries(entries).map(([id,e])=>({id,licenseId:e.licenseId,amountMicros:e.amount,completedAt:e.date})),_mapping:mapping,_version:1};
+  const confirmed=confirm('Delete "'+name+'"?\n\nYour data will be exported as "'+name+'.json" before deletion. Click OK to export and delete.');
+  if(!confirmed) return;
+  download(name+'.json', JSON.stringify(bundle,null,2), 'application/json');
+  // Remove storage
+  ['entries','mapping'].forEach(type=>localStorage.removeItem(storageKey(type,name)));
+  const newList=list.filter(n=>n!==name);
+  saveDashIndex(newList);
+  if(currentDash===name) switchDash(newList[0]);
+  else renderDashSelect();
+}
+
+function loadStoredFor(name){
+  try{ const r=localStorage.getItem(storageKey('entries',name)); return r?JSON.parse(r):{}; }
+  catch{ return {}; }
+}
+function loadMappingFor(name){
+  try{ const r=localStorage.getItem(storageKey('mapping',name)); return r?JSON.parse(r):{mapping:{},groups:{}}; }
+  catch{ return {mapping:{},groups:{}}; }
+}
+
+// Inline rename via Rename button
+function startEditDashName(){
+  const inp=document.getElementById('dash-name-input');
+  const sel=document.getElementById('dash-select');
+  inp.value=currentDash;
+  sel.style.display='none';
+  inp.style.display='inline-block';
+  inp.focus(); inp.select();
+  document.getElementById('dash-bar-hint').textContent='Enter to save · Esc to cancel';
+}
+function finishEditDashName(){
+  const inp=document.getElementById('dash-name-input');
+  const sel=document.getElementById('dash-select');
+  const raw=inp.value.trim();
+  inp.style.display='none';
+  sel.style.display='';
+  document.getElementById('dash-bar-hint').textContent='';
+  if(!raw||raw===currentDash) return;
+  const newName=uniqueDashName(raw, currentDash);
+  renameDash(currentDash, newName);
+}
+function cancelEditDashName(){
+  document.getElementById('dash-name-input').style.display='none';
+  document.getElementById('dash-select').style.display='';
+  document.getElementById('dash-bar-hint').textContent='';
+}
+
+// ── Per-dashboard storage (replaces global STORAGE_KEY/MAPPING_KEY) ───────
+const DEFAULT_COLORS=['#378ADD','#1D9E75','#BA7517','#D85A30','#7F77DD','#E24B4A','#8B6BB1','#2E8B57','#D4AC0D','#1ABC9C'];
+
+// Dynamic mapping: { licenseId: { name, group } }
+// Dynamic groups:  { groupName: { color } }
+let userMapping={};  // licenseId -> {name, group}
+let userGroups={};   // groupName -> {color}
+
+const DEFAULT_GROUP='Default';
+
+let floorDate=''; // Per-dashboard floor date — entries before this date are excluded
+
+let dateOffset=-1; // Days to shift displayed dates (-1 = Work Date by default)
+
+function loadMapping(){
+  userMapping={}; userGroups={}; floorDate=''; dateOffset=0;
+  try{const r=localStorage.getItem(getMappingKey());if(r){const d=JSON.parse(r);userMapping=d.mapping||{};userGroups=d.groups||{};floorDate=d.floorDate||'';dateOffset=d.dateOffset!=null?d.dateOffset:-1;}}
+  catch{}
+  if(!userGroups[DEFAULT_GROUP]) userGroups[DEFAULT_GROUP]={color:'#888780'};
+  updateFloorDateUI();
+  updateDateOffsetUI();
+}
+function saveMapping(){
+  if(!userGroups[DEFAULT_GROUP]) userGroups[DEFAULT_GROUP]={color:'#888780'};
+  try{localStorage.setItem(getMappingKey(),JSON.stringify({mapping:userMapping,groups:userGroups,floorDate,dateOffset}));}
+  catch(err){console.warn('Mapping save failed',err);}
+}
+
+function saveFloorDate(val){
+  floorDate=val||'';
+  saveMapping();
+  updateFloorDateUI();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+function clearFloorDate(){
+  floorDate='';
+  document.getElementById('floor-date-input').value='';
+  saveMapping();
+  updateFloorDateUI();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+function updateFloorDateUI(){
+  const inp=document.getElementById('floor-date-input');
+  const hint=document.getElementById('floor-date-hint');
+  if(inp) inp.value=floorDate||'';
+  if(hint) hint.textContent=floorDate?'Entries before this date are excluded from all views':'';
+}
+
+function shortId(id){
+  // Format: 0x1234...d6ba
+  if(!id||id.length<10) return id;
+  return id.slice(0,6)+'...'+id.slice(-4);
+}
+
+function devName(id){
+  return (userMapping[id]&&userMapping[id].name)||shortId(id);
+}
+function devGroup(id){
+  return (userMapping[id]&&userMapping[id].group)||DEFAULT_GROUP;
+}
+function isHidden(id){
+  return !!(userMapping[id]&&userMapping[id].hidden);
+}
+function devColor(id){
+  const g=devGroup(id);
+  if(userGroups[g]&&userGroups[g].color) return userGroups[g].color;
+  // Auto-assign a color based on group name hash
+  let hash=0;for(let i=0;i<g.length;i++)hash=(hash*31+g.charCodeAt(i))&0xffffffff;
+  return DEFAULT_COLORS[Math.abs(hash)%DEFAULT_COLORS.length];
+}
+function devSplit(id){ const s=userMapping[id]&&userMapping[id].split; return (s!=null&&s!=='')? s:null; }
+function devNotes(id){ return (userMapping[id]&&userMapping[id].notes)||''; }
+function fmt(m){return '$'+(m/1e6).toFixed(2);}
+function fmtDate(s){return s?s.slice(0,10):'?';}
+function dispDate(s){
+  if(!s||s==='?') return s;
+  if(dateOffset===0) return s;
+  const d=new Date(s+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()+dateOffset);
+  return d.toISOString().slice(0,10);
+}
+function rawDate(s){
+  // Reverse of dispDate — converts a user-entered display date back to raw stored date
+  if(!s||dateOffset===0) return s;
+  const d=new Date(s+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()-dateOffset);
+  return d.toISOString().slice(0,10);
+}
+function saveDateOffset(val){
+  dateOffset=parseInt(val)||0;
+  saveMapping();
+  updateDateOffsetUI();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+function updateDateOffsetUI(){
+  const inp=document.getElementById('date-offset-input');
+  if(inp) inp.value=String(dateOffset);
+}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+let barChart,pieChart,timeChart;
+let globalStored={};
+let currentDevices=[];
+let sortCol='total';
+let sortDir='desc';
+
+// Filter state: mode = 'all' | 'prev' | 'days' | 'custom'
+let filterMode='all';
+let filterDays=0;
+let filterFrom='';
+let filterTo='';
+
+function loadStored(){
+  try{const r=localStorage.getItem(getStorageKey());return r?JSON.parse(r):{};}
+  catch{return {};}
+}
+function saveStored(e){
+  try{localStorage.setItem(getStorageKey(),JSON.stringify(e));}
+  catch(err){console.warn('Storage full',err);}
+}
+
+function download(filename,text,mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+  a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+
+function exportJSON(){
+  const stored=loadStored();
+  if(!Object.keys(stored).length){alert('No data to export.');return;}
+  const entries=Object.entries(stored).map(([id,e])=>({id,licenseId:e.licenseId,amountMicros:e.amount,completedAt:e.date}));
+  const bundle={_dashboardName:currentDash,entries,_mapping:{mapping:userMapping,groups:userGroups,floorDate},_version:1};
+  download(currentDash+'.json',JSON.stringify(bundle,null,2),'application/json');
+}
+
+function exportCSV(){
+  const stored=loadStored();
+  if(!Object.keys(stored).length){alert('No data to export.');return;}
+  const rows=[['entry_id','license_id','device_name','category','date','amount_micros','amount_usd','uno_split','notes']];
+  for(const [id,e] of Object.entries(stored)){
+    const n=devName(e.licenseId);
+    const g=devGroup(e.licenseId)||'Ungrouped';
+    const s=devSplit(e.licenseId);
+    const notes=devNotes(e.licenseId);
+    rows.push([id,e.licenseId,n,g,e.date,e.amount,(e.amount/1e6).toFixed(6),s!=null?s:'',notes]);
+  }
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  download(currentDash+'_export.csv',csv,'text/csv');
+}
+
+function clearAll(){
+  if(!confirm('Reset data for "'+currentDash+'"?\n\nThis will permanently delete all stored payout entries for this dashboard. Your device names and category settings will NOT be affected.\n\nThis cannot be undone.'))return;
+  localStorage.removeItem(getStorageKey());
+  globalStored={};
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('status').textContent='All data cleared.';
+  document.getElementById('status').className='status warn';
+}
+
+const TOKEN_KEY='unity_refresh_token_wl';
+const API_KEY='sb_publishable_yKqi0fu5vV6G4ryUIMJuzw_NCoFEl1c';
+// Auth via the active sb-api-auth-token Supabase project
+const AUTH_URL='https://api.unityedge.io/auth/v1/token?grant_type=refresh_token';
+const DATA_URL='https://api.unityedge.io/rest/v1/rpc/rewards_get_allocations';
+
+function loadRefreshToken(){ return localStorage.getItem(TOKEN_KEY)||''; }
+function saveRefreshToken(t){
+  localStorage.setItem(TOKEN_KEY,t);
+  document.getElementById('refresh-token-input').value=t;
+}
+
+async function getAccessToken(refreshToken){
+  const resp=await fetch(AUTH_URL,{
+    method:'POST',
+    headers:{'apikey':API_KEY,'content-type':'application/json'},
+    body:JSON.stringify({refresh_token:refreshToken})
+  });
+  if(!resp.ok){
+    const txt=await resp.text();
+    throw new Error('Auth failed ('+resp.status+'): '+txt.slice(0,120));
+  }
+  const data=await resp.json();
+  if(!data.access_token) throw new Error('No access_token in auth response');
+  // Supabase may nest token in data.data or return it directly
+  const newRefresh=data.refresh_token||data?.data?.refresh_token||null;
+  if(newRefresh){
+    saveRefreshToken(newRefresh);
+  } else {
+    // Log full response keys to fetch-status for debugging
+    const keys=Object.keys(data).join(', ');
+    console.warn('No refresh_token in response. Keys:', keys, JSON.stringify(data).slice(0,300));
+    document.getElementById('fetch-status').textContent='⚠ No refresh_token returned — keys: '+keys;
+  }
+  return data.access_token;
+}
+
+async function fetchAll(){
+  const fetchEl=document.getElementById('fetch-status');
+  const btn=document.getElementById('refresh-btn');
+  let refreshToken=document.getElementById('refresh-token-input').value.trim()||loadRefreshToken();
+  if(!refreshToken){fetchEl.textContent='⚠ Paste your refresh_token first.';return;}
+  saveRefreshToken(refreshToken);
+  btn.disabled=true;
+  fetchEl.textContent='Authenticating…';
+  let accessToken;
+  try{ accessToken=await getAccessToken(refreshToken); }
+  catch(e){ fetchEl.textContent='⚠ '+e.message; btn.disabled=false; return; }
+
+  const stored=loadStored();
+  let skip=0, totalAdded=0, page=1;
+  try{
+    while(true){
+      fetchEl.textContent='Fetching page '+page+' (records '+skip+'–'+(skip+99)+')…';
+      const resp=await fetch(DATA_URL,{
+        method:'POST',
+        headers:{
+          'accept':'*/*',
+          'apikey':API_KEY,
+          'authorization':'Bearer '+accessToken,
+          'content-type':'application/json',
+          'content-profile':'public',
+          'x-client-info':'supabase-js-web/2.87.1',
+        },
+        body:JSON.stringify({skip,take:100})
+      });
+      if(!resp.ok){
+        const txt=await resp.text();
+        fetchEl.textContent='⚠ HTTP '+resp.status+': '+txt.slice(0,100);
+        break;
+      }
+      const data=await resp.json();
+      const records=Array.isArray(data)?data:(data.data||[]);
+      if(!records.length){ fetchEl.textContent='✓ Done — '+totalAdded+' new entries (no more records).'; break; }
+      let added=0,dupes=0;
+      for(const entry of records){
+        if(!entry.id||!entry.licenseId||entry.amountMicros==null) continue;
+        if(stored[entry.id]){ dupes++; }
+        else{ stored[entry.id]={licenseId:entry.licenseId,date:fmtDate(entry.completedAt||entry.createdAt),amount:entry.amountMicros}; added++; totalAdded++; }
+      }
+      if(added===0&&dupes>0){ fetchEl.textContent='✓ Caught up — '+totalAdded+' new entries (stopped at page '+page+').'; break; }
+      skip+=100; page++;
+      if(page>50){ fetchEl.textContent='✓ Stopped at 50 pages — '+totalAdded+' new entries.'; break; }
+    }
+  }catch(e){ fetchEl.textContent='⚠ Fetch error: '+e.message; }
+  saveStored(stored); globalStored=stored; btn.disabled=false;
+  if(totalAdded>0) renderDashboard(stored);
+}
+
+function importData(){
+  const raw=document.getElementById('json-input').value.trim();
+  const statusEl=document.getElementById('status');
+  if(!raw){statusEl.textContent='Nothing to import.';statusEl.className='status warn';return;}
+  let incoming=[];
+  let mappingRestored=false;
+  try{
+    let p=JSON.parse(raw);
+    // Detect bundled export format {entries, _mapping, _version}
+    if(!Array.isArray(p)&&p.entries&&Array.isArray(p.entries)){
+      if(p._mapping){
+        if(p._mapping.mapping) Object.assign(userMapping,p._mapping.mapping);
+        if(p._mapping.groups) Object.assign(userGroups,p._mapping.groups);
+        if(p._mapping.floorDate) floorDate=p._mapping.floorDate;
+        saveMapping();
+        updateFloorDateUI();
+        mappingRestored=true;
+      }
+      // If bundle has a dashboard name and it differs, offer to import into new dashboard
+      if(p._dashboardName&&p._dashboardName!==currentDash){
+        const newName=uniqueDashName(p._dashboardName);
+        const useNew=confirm('This export is from dashboard "'+p._dashboardName+'".\n\nImport into a new dashboard called "'+newName+'"?\n\nClick Cancel to import into the current dashboard ("'+currentDash+'").');
+        if(useNew){
+          const list=getDashIndex();
+          list.push(newName);
+          saveDashIndex(list);
+          switchDash(newName);
+          // Restore mapping for new dash
+          if(p._mapping){
+            if(p._mapping.mapping) Object.assign(userMapping,p._mapping.mapping);
+            if(p._mapping.groups) Object.assign(userGroups,p._mapping.groups);
+            saveMapping();
+          }
+        }
+      }
+      incoming=p.entries;
+    } else if(Array.isArray(p)){
+      incoming=p;
+    } else {
+      for(const k of Object.keys(p)){if(Array.isArray(p[k])){incoming=p[k];break;}}
+    }
+    if(!incoming.length)throw new Error('no array found');
+  }catch(e){statusEl.textContent='Parse error: '+e.message;statusEl.className='status warn';return;}
+  const stored=loadStored();
+  let added=0,dupes=0;
+  for(const entry of incoming){
+    if(!entry.id||!entry.licenseId||entry.amountMicros==null)continue;
+    if(stored[entry.id]){dupes++;continue;}
+    stored[entry.id]={licenseId:entry.licenseId,date:fmtDate(entry.completedAt||entry.createdAt),amount:entry.amountMicros};
+    added++;
+  }
+  saveStored(stored);
+  globalStored=stored;
+  const total=Object.keys(stored).length;
+  const mappingNote=mappingRestored?' · device names restored':'';
+  statusEl.textContent=`+${added} new (${dupes} dupes skipped) — ${total} total stored${mappingNote}.`;
+  statusEl.className='status ok';
+  document.getElementById('json-input').value='';
+  renderMappingTable();
+  renderGroupsTable();
+  renderDashboard(stored);
+}
+
+function clearPresetActive(){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('range-label').textContent='';
+}
+
+function setPreset(preset, btn){
+  clearPresetActive();
+  btn.classList.add('active');
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  const dbi=document.getElementById('days-back-input');
+  if(dbi){ dbi.value=''; dbi.classList.remove('active'); }
+  if(preset==='prev'){filterMode='prev';}
+  else if(preset===0){filterMode='all';filterDays=0;}
+  else{filterMode='days';filterDays=preset;}
+  renderDashboard(globalStored);
+}
+
+function applyDaysBack(val){
+  const n=parseInt(val);
+  const inp=document.getElementById('days-back-input');
+  if(!n||n<1){
+    inp.classList.remove('active');
+    // If no valid number, revert to previous filter state
+    if(filterMode==='daysback'){ filterMode='all'; filterDays=0; if(Object.keys(globalStored).length>0) renderDashboard(globalStored); }
+    return;
+  }
+  inp.classList.add('active');
+  // Deactivate preset buttons
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  // Clear custom date fields
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  document.getElementById('range-label').textContent='';
+  filterMode='daysback';
+  filterDays=n;
+  filterFrom=''; filterTo='';
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+
+function clearDaysBack(){
+  document.getElementById('days-back-input').value='';
+  document.getElementById('days-back-input').classList.remove('active');
+  filterMode='all'; filterDays=0;
+  document.querySelector('.fbtn[onclick*="setPreset(0"]').classList.add('active');
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+
+function applyCustomRange(){
+  const dbi=document.getElementById('days-back-input');
+  if(dbi){ dbi.value=''; dbi.classList.remove('active'); }
+  const from=document.getElementById('date-from').value;
+  const to=document.getElementById('date-to').value;
+  if(!from&&!to)return;
+  clearPresetActive();
+  filterMode='custom';
+  // User enters dates in display (offset) space — translate back to raw stored dates
+  filterFrom=rawDate(from);
+  filterTo=rawDate(to);
+  renderDashboard(globalStored);
+}
+
+function filterEntries(stored){
+  // Apply floor date first — hard lower bound for this dashboard
+  const rawEntries=Object.values(stored);
+  const entries=floorDate?rawEntries.filter(e=>e.date&&e.date>=floorDate):rawEntries;
+  const allDates=entries.map(e=>e.date).filter(Boolean).sort();
+  const latest=allDates[allDates.length-1];
+  const rl=document.getElementById('range-label');
+
+  if(filterMode==='all'){
+    rl.textContent='';
+    return entries;
+  }
+  if(filterMode==='prev'){
+    if(!latest){rl.textContent='';return entries;}
+    // Most recent date with allocations
+    const uniqueDates=[...new Set(allDates)].sort();
+    const prevDate=uniqueDates[uniqueDates.length-1];
+    rl.textContent=dispDate(prevDate);
+    return entries.filter(e=>e.date===prevDate);
+  }
+  if(filterMode==='days'||filterMode==='daysback'){
+    if(!latest){rl.textContent='';return entries;}
+    const cutoff=new Date(latest);
+    cutoff.setDate(cutoff.getDate()-(filterDays-1));
+    const cutoffStr=cutoff.toISOString().slice(0,10);
+    rl.textContent=dispDate(cutoffStr)+' → '+dispDate(latest);
+    return entries.filter(e=>e.date>=cutoffStr);
+  }
+  if(filterMode==='custom'){
+    const from=filterFrom||'0000-00-00';
+    const to=filterTo||'9999-99-99';
+    rl.textContent=(filterFrom?dispDate(filterFrom):'start')+' → '+(filterTo?dispDate(filterTo):'end');
+    return entries.filter(e=>e.date>=from&&e.date<=to);
+  }
+  return entries;
+}
+
+function getVal(d,col,rank){
+  switch(col){
+    case 'rank':  return rank;
+    case 'name':  return devName(d.id);
+    case 'group': return devGroup(d.id)||'';
+    case 'split': return devSplit(d.id)!=null?devSplit(d.id):9999;
+    case 'days':  return d.days;
+    case 'total': return d.total;
+    case 'avg':   return d.total/d.days;
+    case 'max':   return d.max;
+    default: return 0;
+  }
+}
+
+function sortBy(th){
+  const col=th.dataset.col,type=th.dataset.type;
+  if(sortCol===col){sortDir=sortDir==='desc'?'asc':'desc';}
+  else{sortCol=col;sortDir=type==='str'?'asc':'desc';}
+  document.querySelectorAll('th.sortable').forEach(t=>{
+    t.classList.remove('sorted-asc','sorted-desc');
+    t.querySelector('.sort-icon').textContent='↕';
+  });
+  th.classList.add(sortDir==='asc'?'sorted-asc':'sorted-desc');
+  th.querySelector('.sort-icon').textContent=sortDir==='asc'?'↑':'↓';
+  renderTable(currentDevices);
+}
+
+function renderTable(devices){
+  if(!devices.length){document.getElementById('tbody').innerHTML='';expandedDevices.clear();Object.values(expandCharts).forEach(c=>c.destroy());expandCharts={};return;}
+  const grandTotal=devices.reduce((s,d)=>s+d.total,0);
+  const maxT=devices[0].total;
+  // Apply all leaderboard filters
+  const filtered=devices.filter(d=>{
+    if(lbNameFilter&&!devName(d.id).toLowerCase().includes(lbNameFilter)) return false;
+    if(activeCatFilters.size>0&&!activeCatFilters.has(devGroup(d.id))) return false;
+    if(activeSplitFilters.size>0){const s=devSplit(d.id);if(s==null||!activeSplitFilters.has(s))return false;}
+    return true;
+  });
+  const rows=filtered.map((d,i)=>({d,rank:i+1}));
+  rows.sort((a,b)=>{
+    const va=getVal(a.d,sortCol,a.rank),vb=getVal(b.d,sortCol,b.rank);
+    if(typeof va==='string')return sortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return sortDir==='asc'?va-vb:vb-va;
+  });
+  document.getElementById('tbody').innerHTML=rows.map(({d,rank})=>{
+    const n=devName(d.id),g=devGroup(d.id);
+    const avg=Math.round(d.total/d.days);
+    const pct=(d.total/grandTotal*100).toFixed(1);
+    const bw=Math.round(d.total/maxT*100);
+    const split=devSplit(d.id);
+    const splitDisp=split!=null?split+'%':'—';
+    const notes=devNotes(d.id);
+    const noteIcon=notes?`<span class="note-icon">📝<span class="note-tip">${notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></span>`:'';
+    const safeId=d.id.replace(/'/g,"\\'");
+    return `<tr data-lid="${d.id}">
+      <td><button class="btn-chevron" id="chev-${d.id.slice(-8)}" onclick="toggleExpand('${safeId}',this)">▶</button></td>
+      <td style="color:var(--text-light)">${rank}</td>
+      <td class="td-device"><span style="background:${devColor(d.id)};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle"></span><strong style="font-weight:500">${n}</strong>${noteIcon}</td>
+      <td style="color:${devColor(d.id)}">${g}</td>
+      <td style="text-align:right;color:var(--text-main)">${splitDisp}</td>
+      <td style="text-align:right">${d.days}</td>
+      <td style="text-align:right;font-weight:500">${fmt(d.total)}</td>
+      <td style="text-align:right">${fmt(avg)}</td>
+      <td style="text-align:right">${fmt(d.max)}</td>
+      <td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${devColor(d.id)}"></div></div><span style="font-size:11px;color:#999">${pct}%</span></td>
+      <td><button class="btn-edit" onclick="editDevice('${d.id}','${n}')">Edit</button></td>
+    </tr>
+    <tr class="expand-row" id="expand-${d.id.slice(-8)}" style="display:none">
+      <td colspan="11"><div class="expand-inner" id="expand-inner-${d.id.slice(-8)}"></div></td>
+    </tr>`;
+  }).join('');
+}
+
+let expandedDevices=new Set();
+let expandCharts={};
+
+function toggleExpand(licenseId, btn){
+  const shortId=licenseId.slice(-8);
+  const row=document.getElementById('expand-'+shortId);
+  const inner=document.getElementById('expand-inner-'+shortId);
+  const isOpen=expandedDevices.has(licenseId);
+  if(isOpen){
+    expandedDevices.delete(licenseId);
+    row.style.display='none';
+    btn.classList.remove('open');
+    if(expandCharts[licenseId]){ expandCharts[licenseId].destroy(); delete expandCharts[licenseId]; }
+  } else {
+    expandedDevices.add(licenseId);
+    row.style.display='';
+    btn.classList.add('open');
+    renderExpandRow(licenseId, inner, shortId);
+  }
+}
+
+function renderExpandRow(licenseId, inner, shortId){
+  const dev=currentDevices.find(d=>d.id===licenseId);
+  if(!dev||!dev.daily){ inner.innerHTML='<p style="color:var(--text-muted);font-size:12px">No daily data available.</p>'; return; }
+
+  const daily=dev.daily;
+  const dates=Object.keys(daily).sort();
+  const amounts=dates.map(d=>+(daily[d]/1e6).toFixed(4));
+  const maxAmt=Math.max(...amounts);
+  const maxDate=dates[amounts.indexOf(maxAmt)];
+  const n=devName(licenseId);
+  const color=devColor(licenseId);
+
+  inner.innerHTML=`
+    <div class="expand-title">${n} — daily breakdown (${dates.length} day${dates.length!==1?'s':''})</div>
+    <div class="expand-chart-wrap"><canvas id="expand-chart-${shortId}"></canvas></div>
+    <table class="expand-table">
+      <thead><tr><th>Date</th><th style="text-align:right">Amount</th><th style="text-align:right">vs avg</th></tr></thead>
+      <tbody>
+        ${dates.slice().reverse().map(date=>{
+          const amt=daily[date]/1e6;
+          const avg=dev.total/1e6/dates.length;
+          const diff=((amt-avg)/avg*100).toFixed(0);
+          const sign=diff>=0?'+':'';
+          const isBest=date===maxDate;
+          return `<tr class="${isBest?'best-day':''}">
+            <td>${dispDate(date)}${isBest?' ★':''}</td>
+            <td style="text-align:right">${fmt(daily[date])}</td>
+            <td style="text-align:right;color:${diff>=0?'#1D9E75':'#E24B4A'}">${sign}${diff}%</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  // Render mini chart
+  if(expandCharts[licenseId]) expandCharts[licenseId].destroy();
+  const avgLine=dev.total/1e6/dates.length;
+  expandCharts[licenseId]=new Chart(document.getElementById('expand-chart-'+shortId),{
+    type:'bar',
+    data:{
+      labels:dates.map(d=>dispDate(d).slice(5)),
+      datasets:[
+        {data:amounts, backgroundColor:dates.map(d=>d===maxDate?'#F0A500':color+'99'), borderRadius:2, borderSkipped:false},
+        {type:'line', data:dates.map(()=>+avgLine.toFixed(4)), borderColor:'rgba(150,150,150,0.5)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...tooltipStyle(),callbacks:{
+        title:ctx=>dispDate(dates[ctx[0].dataIndex]),
+        label:ctx=>ctx.datasetIndex===0?'$'+ctx.parsed.y.toFixed(4):'Avg: $'+ctx.parsed.y.toFixed(4)
+      }}},
+      scales:{
+        x:{ticks:{font:{size:9},color:'#888',maxRotation:45,autoSkip:true},grid:{display:false}},
+        y:{ticks:{font:{size:10},color:'#888',callback:v=>'$'+v},grid:{color:'rgba(128,128,128,0.1)'}}
+      }
+    }
+  });
+}
+
+let activeSplitFilters=new Set();
+let activeCatFilters=new Set();
+let lbNameFilter='';
+let catDropdownOpen=false;
+
+function toggleCatDropdown(){
+  catDropdownOpen=!catDropdownOpen;
+  document.getElementById('cat-dropdown').classList.toggle('open',catDropdownOpen);
+}
+
+function buildCatDropdown(devices){
+  const cats=[...new Set(devices.map(d=>devGroup(d.id)))].sort();
+  const container=document.getElementById('cat-dropdown-items');
+  container.innerHTML=cats.map(c=>{
+    const checked=activeCatFilters.has(c);
+    return `<label class="cat-dropdown-item"><input type="checkbox" ${checked?'checked':''} onchange="toggleCatFilter('${c.replace(/'/g,"\'")}',this)">${c}</label>`;
+  }).join('');
+  updateCatBtn();
+}
+
+function toggleCatFilter(cat,cb){
+  if(cb.checked) activeCatFilters.add(cat);
+  else activeCatFilters.delete(cat);
+  updateCatBtn();
+  applyLbFilters();
+}
+
+function clearCatFilter(){
+  activeCatFilters.clear();
+  document.querySelectorAll('#cat-dropdown-items input').forEach(cb=>cb.checked=false);
+  updateCatBtn();
+  applyLbFilters();
+}
+
+function updateCatBtn(){
+  const btn=document.getElementById('cat-filter-btn');
+  if(!btn) return;
+  if(activeCatFilters.size===0){
+    btn.textContent='All categories ▾';
+    btn.classList.remove('has-filter');
+  } else {
+    btn.textContent=[...activeCatFilters].join(', ')+' ▾';
+    btn.classList.add('has-filter');
+  }
+  updateClearAllBtn();
+}
+
+function updateClearAllBtn(){
+  const anyActive=activeCatFilters.size>0||activeSplitFilters.size>0||lbNameFilter.trim().length>0;
+  const btn=document.getElementById('lb-clear-all');
+  if(btn) btn.style.display=anyActive?'inline-block':'none';
+}
+
+function clearAllLbFilters(){
+  activeCatFilters.clear();
+  activeSplitFilters.clear();
+  lbNameFilter='';
+  const nf=document.getElementById('lb-name-filter');
+  if(nf) nf.value='';
+  document.querySelectorAll('#cat-dropdown-items input').forEach(cb=>cb.checked=false);
+  document.querySelectorAll('.split-check-label').forEach(l=>l.classList.remove('checked'));
+  updateCatBtn();
+  updateClearAllBtn();
+  renderTable(currentDevices);
+}
+
+function applyLbFilters(){
+  lbNameFilter=(document.getElementById('lb-name-filter')?.value||'').toLowerCase().trim();
+  updateClearAllBtn();
+  renderTable(currentDevices);
+}
+
+// Close cat dropdown when clicking outside
+document.addEventListener('click', e=>{
+  if(catDropdownOpen&&!document.getElementById('cat-filter-wrap')?.contains(e.target)){
+    catDropdownOpen=false;
+    document.getElementById('cat-dropdown')?.classList.remove('open');
+  }
+});
+
+function buildSplitFilter(devices){
+  buildCatDropdown(devices);
+  const splits=[...new Set(devices.map(d=>devSplit(d.id)).filter(s=>s!=null))].sort((a,b)=>a-b);
+  const row=document.getElementById('split-filter-row');
+  const opts=document.getElementById('split-filter-options');
+  if(!splits.length){ row.style.display='none'; return; }
+  row.style.display='flex'; row.style.width='auto';
+  // Keep existing checked state for splits that still exist
+  const newActive=new Set([...activeSplitFilters].filter(s=>splits.includes(s)));
+  activeSplitFilters=newActive;
+  opts.innerHTML=splits.map(s=>{
+    const checked=activeSplitFilters.has(s);
+    return `<label class="split-check-label${checked?' checked':''}" onclick="toggleSplitFilter(${s},this)"><input type="checkbox" ${checked?'checked':''} style="display:none">${s}%</label>`;
+  }).join('');
+}
+
+function toggleSplitFilter(split, label){
+  if(activeSplitFilters.has(split)){ activeSplitFilters.delete(split); label.classList.remove('checked'); }
+  else { activeSplitFilters.add(split); label.classList.add('checked'); }
+  updateClearAllBtn();
+  renderTable(currentDevices);
+}
+
+function clearSplitFilter(){
+  activeSplitFilters.clear();
+  document.querySelectorAll('.split-check-label').forEach(l=>l.classList.remove('checked'));
+  updateClearAllBtn();
+  renderTable(currentDevices);
+}
+
+function tooltipStyle(){
+  const dark=document.body.classList.contains('dark');
+  return {
+    backgroundColor: dark ? '#ffffff' : '#1a1a1a',
+    titleColor:      dark ? '#111111' : '#ffffff',
+    bodyColor:       dark ? '#1a1a1a' : '#f0f0f0',
+    borderColor:     dark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
+    borderWidth: 1
+  };
+}
+
+function renderDashboard(stored){
+  const entries=filterEntries(stored);
+  document.getElementById('dashboard').style.display='block';
+  if(!entries.length){
+    document.getElementById('metrics').innerHTML='<div class="empty">No data in this date range.</div>';
+    currentDevices=[];renderTable([]);return;
+  }
+
+  const devMap={},dayMap={};
+  for(const e of entries){
+    const lid=e.licenseId;
+    if(isHidden(lid)) continue;
+    if(!devMap[lid])devMap[lid]={total:0,days:new Set(),max:0,daily:{}};
+    devMap[lid].total+=e.amount;
+    devMap[lid].days.add(e.date);
+    if(e.amount>devMap[lid].max)devMap[lid].max=e.amount;
+    devMap[lid].daily[e.date]=(devMap[lid].daily[e.date]||0)+e.amount;
+    dayMap[e.date]=(dayMap[e.date]||0)+e.amount;
+  }
+
+  const devices=Object.entries(devMap)
+    .map(([id,d])=>({id,total:d.total,days:d.days.size,max:d.max,daily:d.daily}))
+    .sort((a,b)=>b.total-a.total);
+  currentDevices=devices;
+  buildSplitFilter(devices);
+
+  const grandTotal=devices.reduce((s,d)=>s+d.total,0);
+  const totalDays=Object.keys(dayMap).length;
+  const top=devices[0];
+  const groupTotals={};
+  devices.forEach(d=>{const g=devGroup(d.id);groupTotals[g]=(groupTotals[g]||0)+d.total;});
+
+  // Compute true total including hidden devices for tooltip
+  const allEntries=filterEntries(stored);
+  const hiddenDayMap={};
+  let hiddenTotal=0;
+  allEntries.forEach(e=>{
+    if(isHidden(e.licenseId)){
+      hiddenTotal+=e.amount;
+      hiddenDayMap[e.date]=(hiddenDayMap[e.date]||0)+e.amount;
+    }
+  });
+  const trueTotal=grandTotal+hiddenTotal;
+  const trueAvg=totalDays>0?Math.round(trueTotal/totalDays):0;
+  const hiddenCount=new Set(allEntries.filter(e=>isHidden(e.licenseId)).map(e=>e.licenseId)).size;
+  const hasHidden=hiddenTotal>0;
+
+  const rangeNote=filterMode==='all'?'all time':
+    filterMode==='prev'?'previous day':
+    (filterMode==='days'||filterMode==='daysback')?`last ${filterDays} days`:
+    'custom range';
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric">
+      <div class="metric-label">Total earned</div>
+      <div class="metric-value">${fmt(grandTotal)}</div>
+      <div class="metric-sub">${devices.length} devices · ${rangeNote}</div>
+      ${hasHidden?`<div class="metric-tip">Includes hidden: ${fmt(trueTotal)}<br>${hiddenCount} hidden device${hiddenCount!==1?'s':''} contributing ${fmt(hiddenTotal)}</div>`:''}
+    </div>
+    <div class="metric"><div class="metric-label">Top device</div><div class="metric-value" style="font-size:16px">${devName(top.id)}</div><div class="metric-sub">${fmt(top.total)}</div></div>
+    <div class="metric">
+      <div class="metric-label">Daily avg</div>
+      <div class="metric-value">${fmt(Math.round(grandTotal/totalDays))}</div>
+      <div class="metric-sub">across visible devices</div>
+      ${hasHidden?`<div class="metric-tip">Includes hidden: ${fmt(trueAvg)}/day<br>${hiddenCount} hidden device${hiddenCount!==1?'s':''} contributing ${fmt(hiddenTotal)}</div>`:''}
+    </div>
+    <div class="metric">
+      <div class="metric-label">Days in range</div>
+      <div class="metric-value">${totalDays}</div>
+      <div class="metric-sub">${Object.keys(stored).length.toLocaleString()} entries total</div>
+      ${floorDate?`<div class="metric-tip">Dashboard min date: ${floorDate}</div>`:''}
+    </div>
+  `;
+
+  const bNames=devices.map(d=>devName(d.id));
+  const bVals=devices.map(d=>+(d.total/1e6).toFixed(2));
+  const bColors=devices.map(d=>devColor(d.id));
+  const groups=Object.keys(groupTotals).sort();
+
+  document.getElementById('leg-bar').innerHTML=groups.map(g=>{const c=(userGroups[g]&&userGroups[g].color)||(()=>{let h=0;for(let i=0;i<g.length;i++)h=(h*31+g.charCodeAt(i))&0xffffffff;return DEFAULT_COLORS[Math.abs(h)%DEFAULT_COLORS.length];})();return `<span class="li"><span class="dot" style="background:${c}"></span>${g}</span>`;}).join('');
+
+  if(barChart)barChart.destroy();
+  barChart=new Chart(document.getElementById('barChart'),{
+    type:'bar',
+    data:{labels:bNames,datasets:[{data:bVals,backgroundColor:bColors,borderRadius:3,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...tooltipStyle(),callbacks:{label:ctx=>bNames[ctx.dataIndex]+': $'+ctx.parsed.y.toFixed(2)}}},
+      scales:{x:{ticks:{font:{size:9},color:'#888',maxRotation:45,autoSkip:false},grid:{display:false}},
+              y:{ticks:{font:{size:11},color:'#888',callback:v=>'$'+v},grid:{color:'rgba(0,0,0,0.06)'}}}
+    }
+  });
+
+  const gVals=groups.map(g=>+(groupTotals[g]/1e6).toFixed(2));
+  const gColors=groups.map(g=>{if(userGroups[g]&&userGroups[g].color)return userGroups[g].color;let hash=0;for(let i=0;i<g.length;i++)hash=(hash*31+g.charCodeAt(i))&0xffffffff;return DEFAULT_COLORS[Math.abs(hash)%DEFAULT_COLORS.length];});
+  document.getElementById('leg-pie').innerHTML=groups.map((g,i)=>`<span class="li"><span class="dot" style="background:${gColors[i]}"></span>${g} ${((groupTotals[g]/grandTotal)*100).toFixed(1)}%</span>`).join('');
+
+  if(pieChart)pieChart.destroy();
+  pieChart=new Chart(document.getElementById('pieChart'),{
+    type:'doughnut',
+    data:{labels:groups,datasets:[{data:gVals,backgroundColor:gColors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{display:false},tooltip:{...tooltipStyle(),callbacks:{label:ctx=>ctx.label+': $'+ctx.parsed.toFixed(2)}}}
+    }
+  });
+
+  const sortedDates=Object.keys(dayMap).sort();
+  const dVals=sortedDates.map(d=>+(dayMap[d]/1e6).toFixed(2));
+  const avgD=grandTotal/1e6/totalDays;
+  if(timeChart)timeChart.destroy();
+  timeChart=new Chart(document.getElementById('timeChart'),{
+    type:'bar',
+    data:{labels:sortedDates.map(d=>dispDate(d).slice(5)),datasets:[{data:dVals,backgroundColor:dVals.map(v=>v<avgD*0.3?'#E24B4A':'#378ADD'),borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...tooltipStyle(),callbacks:{label:ctx=>dispDate(sortedDates[ctx.dataIndex])+': $'+ctx.parsed.y.toFixed(2)}}},
+      scales:{x:{ticks:{font:{size:10},color:'#888',maxRotation:45,autoSkip:true},grid:{display:false}},
+              y:{ticks:{font:{size:11},color:'#888',callback:v=>'$'+v},grid:{color:'rgba(0,0,0,0.06)'}}}
+    }
+  });
+
+  renderTable(devices);
+  // Refresh settings tables to show any newly discovered license IDs
+  renderMappingTable();
+  renderGroupsTable();
+}
+
+
+// ── Settings panel ──────────────────────────────────────────────────────
+function toggleImportAccordion(){
+  const btn=document.getElementById('import-toggle');
+  const body=document.getElementById('import-accordion-body');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  btn.classList.toggle('open',!isOpen);
+}
+
+function toggleSettings(){
+  const body=document.getElementById('settings-body');
+  const icon=document.getElementById('settings-icon');
+  body.classList.toggle('open');
+  icon.textContent=body.classList.contains('open')?'▲':'▼';
+}
+
+let mappingSortCol='id';
+let mappingSortDir='asc';
+let mappingFilter='';
+
+function applyMappingFilter(){
+  mappingFilter=document.getElementById('mapping-filter').value.trim().toLowerCase();
+  applyMappingFilterAndSort();
+}
+
+function clearMappingFilter(){
+  document.getElementById('mapping-filter').value='';
+  mappingFilter='';
+  applyMappingFilterAndSort();
+}
+
+function sortMappingTable(col, th){
+  if(mappingSortCol===col){ mappingSortDir=mappingSortDir==='asc'?'desc':'asc'; }
+  else { mappingSortCol=col; mappingSortDir='asc'; }
+  document.querySelectorAll('.mapping-table th.map-sortable').forEach(t=>{
+    t.classList.remove('map-sorted-asc','map-sorted-desc');
+    t.querySelector('.map-sort-icon').textContent='↕';
+  });
+  th.classList.add(mappingSortDir==='asc'?'map-sorted-asc':'map-sorted-desc');
+  th.querySelector('.map-sort-icon').textContent=mappingSortDir==='asc'?'↑':'↓';
+  applyMappingFilterAndSort();
+}
+
+function applyMappingVisibility(){
+  const tbody=document.getElementById('mapping-tbody');
+  const rows=[...document.querySelectorAll('#mapping-tbody tr')];
+  const showHidden=document.getElementById('show-hidden-check')?.checked||false;
+
+  // Set visibility first
+  rows.forEach(tr=>{
+    const lid=tr.dataset.lid||'';
+    const isHid=tr.querySelector('.hide-check')?.checked||false;
+    if(isHid&&!showHidden){ tr.style.display='none'; return; }
+    const name=tr.querySelector('.name-input')?.value.toLowerCase()||'';
+    const group=tr.querySelector('.group-select')?.value.toLowerCase()||'';
+    const idText=shortId(lid).toLowerCase();
+    const notes=(tr.querySelector('.notes-input')?.value||'').toLowerCase();
+    const splitTxt=(tr.querySelector('.split-input')?.value||'');
+    const show=!mappingFilter||idText.includes(mappingFilter)||lid.toLowerCase().includes(mappingFilter)||name.includes(mappingFilter)||group.includes(mappingFilter)||notes.includes(mappingFilter)||splitTxt.includes(mappingFilter);
+    tr.style.display=show?'':'none';
+  });
+
+  // Always move hidden rows to bottom of tbody, visible rows stay in place
+  const visibleRows=rows.filter(tr=>tr.style.display!=='none'&&!(tr.querySelector('.hide-check')?.checked));
+  const hiddenRows=rows.filter(tr=>tr.style.display!=='none'&&tr.querySelector('.hide-check')?.checked);
+  [...visibleRows,...hiddenRows].forEach(tr=>tbody.appendChild(tr));
+}
+
+function applyMappingFilterAndSort(){
+  applyMappingVisibility();
+  // Sort visible rows in DOM
+  const tbody=document.getElementById('mapping-tbody');
+  const rows=[...document.querySelectorAll('#mapping-tbody tr')];
+  const visibleRows=rows.filter(tr=>tr.style.display!=='none');
+  visibleRows.sort((a,b)=>{
+    const aHid=a.querySelector('.hide-check')?.checked?1:0;
+    const bHid=b.querySelector('.hide-check')?.checked?1:0;
+    if(aHid!==bHid) return aHid-bHid;
+    let va='',vb='';
+    if(mappingSortCol==='id'){ va=(a.dataset.lid||'').slice(-4); vb=(b.dataset.lid||'').slice(-4); }
+    else if(mappingSortCol==='name'){ va=a.querySelector('.name-input')?.value||''; vb=b.querySelector('.name-input')?.value||''; }
+    else if(mappingSortCol==='group'){ va=a.querySelector('.group-select')?.value||''; vb=b.querySelector('.group-select')?.value||''; }
+    else if(mappingSortCol==='split'){ va=parseFloat(a.querySelector('.split-input')?.value||'99999'); vb=parseFloat(b.querySelector('.split-input')?.value||'99999'); return mappingSortDir==='asc'?va-vb:vb-va; }
+    const cmp=va.localeCompare(vb);
+    return mappingSortDir==='asc'?cmp:-cmp;
+  });
+  visibleRows.forEach(tr=>tbody.appendChild(tr));
+}
+
+function editDevice(licenseId, displayName){
+  // Open settings panel
+  const body=document.getElementById('settings-body');
+  const icon=document.getElementById('settings-icon');
+  if(!body.classList.contains('open')){
+    body.classList.add('open');
+    icon.textContent='▲';
+  }
+  // Set filter to the device name or short ID
+  const filterVal=displayName&&!displayName.startsWith('0x')?displayName:shortId(licenseId);
+  document.getElementById('mapping-filter').value=filterVal;
+  mappingFilter=filterVal.toLowerCase();
+  applyMappingFilterAndSort();
+  // Scroll to settings panel
+  document.querySelector('.settings-panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderMappingTable(){
+  const tbody=document.getElementById('mapping-tbody');
+  const rows=Object.entries(userMapping);
+  const stored=loadStored();
+  const knownIds=new Set(Object.values(stored).map(e=>e.licenseId));
+  knownIds.forEach(lid=>{if(!userMapping[lid])rows.push([lid,{name:'',group:'',hidden:false}]);});
+
+  const groupOpts=Object.keys(userGroups).map(g=>`<option value="${g}"${g===DEFAULT_GROUP?' selected':''}>  ${g}</option>`).join('');
+
+  tbody.innerHTML=rows.map(([lid,info])=>{
+    const selectedGroup=info.group||DEFAULT_GROUP;
+    const opts=Object.keys(userGroups).map(g=>`<option value="${g}"${g===selectedGroup?' selected':''}>${g}</option>`).join('');
+    const hidChecked=info.hidden?'checked':'';
+    const splitVal=info.split!=null?info.split:'';
+    const notesVal=(info.notes||'').replace(/`/g,"'");
+    return `<tr data-lid="${lid}" style="${info.hidden?'opacity:0.5':''}">
+      <td class="id-col"><input type="text" class="mono readonly lid-input" value="${shortId(lid)}" title="${lid}" readonly /></td>
+      <td class="name-col"><input type="text" class="editable name-input" value="${info.name||''}" placeholder="Device name" /></td>
+      <td class="group-col"><select class="group-select">${opts}</select></td>
+      <td class="split-col"><input type="number" class="split-input" min="0" max="100" value="${splitVal}" placeholder="—" /></td>
+      <td class="notes-col"><textarea class="notes-input" placeholder="Optional notes…" rows="2">${notesVal}</textarea></td>
+      <td class="hide-col"><input type="checkbox" class="hide-check" title="Hide from dashboard" ${hidChecked} onchange="this.closest('tr').style.opacity=this.checked?'0.5':'1'" /></td>
+      <td class="clr-col"><button class="btn-sm" title="Clear name and category" onclick="clearMappingRow(this,'${lid}')">↺</button></td>
+    </tr>`;
+  }).join('');
+  // Apply filter immediately after render — hides hidden rows by default
+  applyMappingFilterAndSort();
+}
+
+function rebuildGroupDatalist(){ /* replaced by select dropdown */ }
+
+function addMappingRow(){
+  const tbody=document.getElementById('mapping-tbody');
+  const tr=document.createElement('tr');
+  tr.dataset.lid='';
+  const opts=Object.keys(userGroups).map(g=>`<option value="${g}"${g===DEFAULT_GROUP?' selected':''}>${g}</option>`).join('');
+  tr.innerHTML=`
+    <td class="id-col"><input type="text" class="mono editable lid-input" placeholder="Paste full 0x... license ID" /></td>
+    <td class="name-col"><input type="text" class="editable name-input" placeholder="Device name" /></td>
+    <td class="group-col"><select class="group-select">${opts}</select></td>
+    <td class="split-col"><input type="number" class="split-input" min="0" max="100" placeholder="—" /></td>
+    <td class="notes-col"><textarea class="notes-input" placeholder="Optional notes…" rows="2"></textarea></td>
+    <td class="hide-col"><input type="checkbox" class="hide-check" title="Hide from dashboard" /></td>
+    <td class="clr-col"><button class="btn-sm" title="Clear" onclick="clearMappingRow(this,null)">↺</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function clearMappingRow(btn, lid){
+  const tr=btn.closest('tr');
+  const name=tr.querySelector('.name-input').value.trim();
+  const msg=name
+    ? `Clear settings for "${name}"?\n\nThis will remove the device name and reset the category to Default. The license will still appear in the dashboard.`
+    : 'Clear settings for this device?\n\nThe category will be reset to Default.';
+  if(!confirm(msg)) return;
+  tr.querySelector('.name-input').value='';
+  const sel=tr.querySelector('.group-select');
+  if(sel) sel.value=DEFAULT_GROUP;
+  const splitInp=tr.querySelector('.split-input');
+  if(splitInp) splitInp.value='';
+  const notesInp=tr.querySelector('.notes-input');
+  if(notesInp) notesInp.value='';
+  const chk=tr.querySelector('.hide-check');
+  if(chk){chk.checked=false;}
+  tr.style.opacity='1';
+  if(lid) { delete userMapping[lid]; saveMapping(); }
+}
+
+/* removeMappingRow replaced by clearMappingRow */
+
+function renderGroupsTable(){
+  const tbody=document.getElementById('groups-tbody');
+  const allGroups=new Set(Object.keys(userGroups));
+  allGroups.add(DEFAULT_GROUP);
+  Object.values(userMapping).forEach(m=>{if(m.group)allGroups.add(m.group);});
+  // Always show Default first
+  const sorted=[DEFAULT_GROUP,...[...allGroups].filter(g=>g!==DEFAULT_GROUP).sort()];
+  tbody.innerHTML=sorted.map(g=>{
+    const color=(userGroups[g]&&userGroups[g].color)||DEFAULT_COLORS[Math.abs(g.split('').reduce((a,c)=>a*31+c.charCodeAt(0),0))%DEFAULT_COLORS.length];
+    const isDefault=g===DEFAULT_GROUP;
+    return `<tr data-group="${g}">
+      <td class="name-col">
+        ${isDefault
+          ? `<span style="font-size:12px;color:#555;padding:4px 7px;display:inline-block">${g} <span style="font-size:10px;color:#bbb">(default)</span></span>`
+          : `<input type="text" class="group-name-input editable" value="${g}" />`}
+      </td>
+      <td class="color-col"><input type="color" class="group-color-input" value="${color}" /></td>
+      <td class="del-col">
+        ${isDefault
+          ? `<span style="font-size:16px;color:#ddd;padding:0 6px">—</span>`
+          : `<button class="btn-sm danger" onclick="removeGroupRow(this,'${g}')">✕</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function addGroupRow(){
+  const tbody=document.getElementById('groups-tbody');
+  const tr=document.createElement('tr');
+  tr.dataset.group='';
+  tr.innerHTML=`
+    <td class="name-col"><input type="text" class="group-name-input editable" placeholder="Category name" /></td>
+    <td class="color-col"><input type="color" class="group-color-input" value="#378ADD" /></td>
+    <td class="del-col"><button class="btn-sm danger" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function removeGroupRow(btn, group){
+  if(group===DEFAULT_GROUP) return;
+  // Count devices in this group
+  const affected=Object.values(userMapping).filter(m=>m.group===group).length;
+  const msg=affected>0
+    ? `Delete category "${group}"?\n\n${affected} device${affected>1?'s':''} will be moved to the Default category.\n\nThis cannot be undone.`
+    : `Delete category "${group}"? This cannot be undone.`;
+  if(!confirm(msg)) return;
+  // Reassign affected devices to Default
+  Object.values(userMapping).forEach(m=>{if(m.group===group)m.group=DEFAULT_GROUP;});
+  delete userGroups[group];
+  saveMapping();
+  renderGroupsTable();
+  renderMappingTable();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+
+function saveSettings(){
+  // Read mapping rows
+  const newMapping={};
+  document.querySelectorAll('#mapping-tbody tr').forEach(tr=>{
+    let lid=tr.dataset.lid;
+    const lidInput=tr.querySelector('.lid-input');
+    const nameInput=tr.querySelector('.name-input');
+    const groupSel=tr.querySelector('.group-select');
+    const hideChk=tr.querySelector('.hide-check');
+    if(!lidInput||!nameInput) return;
+    if(!lid) lid=lidInput.value.trim();
+    if(!lid) return;
+    const name=nameInput.value.trim();
+    const group=groupSel?groupSel.value:DEFAULT_GROUP;
+    const hidden=hideChk?hideChk.checked:false;
+    const splitInp=tr.querySelector('.split-input');
+    const splitVal=splitInp&&splitInp.value!==''?parseInt(splitInp.value):null;
+    const notesInp=tr.querySelector('.notes-input');
+    const notes=notesInp?notesInp.value.trim():'';
+    newMapping[lid]={name,group,hidden,split:splitVal,notes};
+  });
+  userMapping=newMapping;
+
+  // Read group/category rows
+  const newGroups={};
+  // Always preserve Default with possibly updated color
+  document.querySelectorAll('#groups-tbody tr').forEach(tr=>{
+    const g=tr.dataset.group;
+    const colorInput=tr.querySelector('.group-color-input');
+    if(!colorInput) return;
+    // Existing Default row
+    if(g===DEFAULT_GROUP){
+      newGroups[DEFAULT_GROUP]={color:colorInput.value};
+      return;
+    }
+    const nameInput=tr.querySelector('.group-name-input');
+    const name=nameInput?nameInput.value.trim():g;
+    if(!name) return;
+    newGroups[name]={color:colorInput.value};
+    // If renamed, reassign devices that were in old group
+    if(g&&name!==g){
+      Object.values(userMapping).forEach(m=>{if(m.group===g)m.group=name;});
+    }
+  });
+  if(!newGroups[DEFAULT_GROUP]) newGroups[DEFAULT_GROUP]={color:'#888780'};
+  userGroups=newGroups;
+
+  // Deduplicate device names — auto-append (1),(2) etc
+  const seenNames={};
+  Object.entries(userMapping).forEach(([lid,info])=>{
+    if(!info.name) return;
+    const base=info.name;
+    if(!seenNames[base]){ seenNames[base]=1; }
+    else {
+      let i=seenNames[base];
+      let candidate=base+' ('+i+')';
+      while(seenNames[candidate]) i++, candidate=base+' ('+i+')';
+      seenNames[candidate]=1;
+      seenNames[base]++;
+      info.name=candidate;
+    }
+  });
+
+  saveMapping();
+  const st=document.getElementById('settings-save-status');
+  st.textContent='Saved ✓';
+  setTimeout(()=>st.textContent='',2000);
+
+  renderMappingTable();
+  renderGroupsTable();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+
+function exportMappingCSV(){
+  const rows=[['license_id','device_name','category_name','hidden']];
+  Object.entries(userMapping).forEach(([lid,info])=>{
+    rows.push([lid,info.name||'',info.group||DEFAULT_GROUP,info.hidden?1:0,info.split!=null?info.split:'',info.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='unity_device_mapping.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importMappingCSV(){
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.csv';
+  input.onchange=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const lines=ev.target.result.split('\n').slice(1); // skip header
+      lines.forEach(line=>{
+        const parts=line.split(',').map(p=>p.replace(/^"|"$/g,'').trim());
+        if(parts.length>=2&&parts[0]){
+          userMapping[parts[0]]={name:parts[1]||'',group:parts[2]||DEFAULT_GROUP,hidden:parts[3]==='1',split:parts[4]!==undefined&&parts[4]!==''?parseInt(parts[4]):null,notes:parts[5]||''};
+        }
+      });
+      saveMapping();
+      renderMappingTable();
+      renderGroupsTable();
+      if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ── Accessibility: font / size / theme ───────────────────────────────────
+const PREFS_KEY='unity_a11y_prefs';
+
+function loadPrefs(){
+  try{ return JSON.parse(localStorage.getItem(PREFS_KEY))||{}; }
+  catch{ return {}; }
+}
+function savePrefs(p){
+  try{ localStorage.setItem(PREFS_KEY,JSON.stringify(p)); }catch{}
+}
+
+function getOrCreateStyleTag(){
+  let tag=document.getElementById('a11y-overrides');
+  if(!tag){ tag=document.createElement('style'); tag.id='a11y-overrides'; document.head.appendChild(tag); }
+  return tag;
+}
+
+function applyA11yOverrides(){
+  const p=loadPrefs();
+  const font=p.font&&p.font!=='system'?p.font:'';
+  const size=p.size?p.size+'px':'';
+  const tag=getOrCreateStyleTag();
+  let css='';
+
+  // Font family — set on body and inherit; override non-inheriting elements explicitly
+  if(font){
+    // Override body + all common elements — some browsers don't inherit font-family reliably
+    css+=`body,div,p,span,a,label,h1,h2,h3,h4,td,th,li,strong{font-family:${font}!important;}`;
+    css+=`input,select,textarea,button{font-family:${font}!important;}`;
+  }
+
+  if(size){
+    const base=parseInt(size);
+    const sm  = Math.round(base*0.86);   // table base, e.g. 12 at MD=14
+    const smm1= sm-1;                     // non-device cols, e.g. 11
+    const mv  = Math.round(base*1.4);     // metric value, e.g. 20
+    const xs  = Math.round(base*0.71);    // tiny labels, e.g. 10
+
+    // Set body font-size — everything inherits from here unless overridden below
+    css+=`body{font-size:${base}px!important;}`;
+
+    // Elements that don't inherit font-size need explicit override
+    css+=`input,select,textarea,button{font-size:${base}px!important;}`;
+
+    // Table cells — slightly smaller than body
+    css+=`table,th,td{font-size:${sm}px!important;}`;
+
+    // Leaderboard: non-device cols are 1px smaller than device col
+    css+=`.lb-table td{font-size:${smm1}px!important;}`;
+    css+=`.lb-table td.td-device{font-size:${sm}px!important;}`;
+
+    // Metric card values — larger
+    css+=`.metric-value{font-size:${mv}px!important;}`;
+
+    // Small labels — slightly smaller than body
+    css+=`.metric-label,.metric-sub{font-size:${xs}px!important;}`;
+    css+=`.sort-icon,.map-sort-icon,.range-label,.dash-bar-hint{font-size:${xs}px!important;}`;
+    css+=`.status,.fetch-status,.token-hint,.settings-save-status{font-size:${xs}px!important;}`;
+
+    // Filter inputs, settings, legends, chart titles, section titles
+    css+=`.mapping-filter-row input,.lb-name-filter,.cat-filter-btn,.a11y-select,.dash-select,.a11y-label{font-size:${sm}px!important;}`;
+    css+=`.settings-section-title,.chart-title,.section-title,.legend .li,.split-check-label,.cat-dropdown-item{font-size:${sm}px!important;}`;
+    css+=`.filter-row label,.filter-row .fbtn,.custom-range label,.custom-range input,.dash-bar-top label,.dash-bar-top button{font-size:${sm}px!important;}`;
+    css+=`.mapping-table input,.mapping-table select,.mapping-table textarea,.mapping-table th,.btn-sm,.btn-refresh,.btn-export,.btn-edit{font-size:${sm}px!important;}`;
+    css+=`.token-box label,.token-box input,.settings-toggle span,.sidebar-header-title,.note-icon .note-tip{font-size:${sm}px!important;}`;
+    css+=`.import-header span,.import-box textarea,.settings-save-status{font-size:${sm}px!important;}`;
+    css+=`::placeholder{font-size:${sm}px!important;}`;
+
+    // Dark mode filter labels — match table base and ensure readable color
+    css+=`body.dark .lb-filters label,body.dark .split-filter-row label{font-size:${sm}px!important;color:var(--text-main)!important;}`;
+
+  } else {
+    // No size pref — just enforce lb-table 1px differential
+    css+=`.lb-table td{font-size:calc(1em - 1px)!important;}`;
+    css+=`.lb-table td.td-device{font-size:1em!important;}`;
+  }
+
+  tag.textContent=css;
+}
+
+function applyFont(val){
+  const prefs=loadPrefs(); prefs.font=val; savePrefs(prefs);
+  applyA11yOverrides();
+  const sel=document.getElementById('font-select');
+  if(sel) sel.value=val;
+}
+
+function applySize(val){
+  const prefs=loadPrefs(); prefs.size=val; savePrefs(prefs);
+  applyA11yOverrides();
+  const sel=document.getElementById('size-select');
+  if(sel) sel.value=val;
+}
+
+function applyTheme(theme){
+  const prefs=loadPrefs(); prefs.theme=theme; savePrefs(prefs);
+  const useDark = theme==='dark';
+  document.body.classList.toggle('dark', useDark);
+  ['light','dark'].forEach(t=>{
+    const btn=document.getElementById('theme-'+t);
+    if(btn) btn.classList.toggle('active', t===theme);
+  });
+  // Re-render dashboard so charts pick up new tooltip colors
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+
+function initPrefs(){
+  const p=loadPrefs();
+  applyA11yOverrides();
+  if(p.font){ const s=document.getElementById('font-select'); if(s) s.value=p.font; }
+  if(p.size){ const s=document.getElementById('size-select'); if(s) s.value=p.size; }
+  applyTheme(p.theme==='dark'?'dark':'light');
+
+}
+
+// ── Init: migrate legacy single-dashboard data if present ────────────────
+(function migrateLegacy(){
+  const legacyEntries=localStorage.getItem(STORAGE_KEY);
+  const legacyMapping=localStorage.getItem(MAPPING_KEY);
+  const hasIndex=localStorage.getItem(DB_INDEX_KEY);
+  if(!hasIndex&&(legacyEntries||legacyMapping)){
+    // First run with new multi-dash code — migrate into default dashboard
+    if(legacyEntries) localStorage.setItem(storageKey('entries',DEFAULT_DASH_NAME),legacyEntries);
+    if(legacyMapping) localStorage.setItem(storageKey('mapping',DEFAULT_DASH_NAME),legacyMapping);
+    saveDashIndex([DEFAULT_DASH_NAME]);
+    // Don't remove legacy keys yet — harmless to leave
+  } else if(!hasIndex){
+    saveDashIndex([DEFAULT_DASH_NAME]);
+  }
+  // Set currentDash to first in index
+  const idx=getDashIndex();
+  currentDash=idx[0]||DEFAULT_DASH_NAME;
+})();
+
+renderDashSelect();
+loadMapping();
+globalStored=loadStored();
+if(Object.keys(globalStored).length>0){
+  document.getElementById('status').textContent=Object.keys(globalStored).length.toLocaleString()+' entries loaded.';
+  document.getElementById('status').className='status ok';
+  renderDashboard(globalStored);
+}
+const savedRefresh=loadRefreshToken();
+if(savedRefresh) document.getElementById('refresh-token-input').value=savedRefresh;
+renderMappingTable();
+renderGroupsTable();
+initPrefs();
+</script>
+</body>
+</html>
