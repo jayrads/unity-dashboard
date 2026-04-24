@@ -177,6 +177,8 @@
   .section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px; }
   .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: auto; margin-bottom: 20px; }
   @media(max-width:700px){ .table-wrap { max-height: 70vh; } }
+  .table-wrap.scroll-x { touch-action: pan-x; overflow-y: hidden; }
+  .table-wrap.scroll-y { touch-action: pan-y; overflow-x: hidden; }
   .lb-table thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-thead); }
   .lb-table thead th.th-device { z-index: 4; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
@@ -1996,6 +1998,39 @@ function applyTheme(theme){
   if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
 }
 
+function initTableTouchLock(){
+  const wrap=document.querySelector('.table-wrap');
+  if(!wrap) return;
+  let startX=0, startY=0, locked=null;
+
+  wrap.addEventListener('touchstart', e=>{
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+    locked=null;
+    wrap.classList.remove('scroll-x','scroll-y');
+  },{passive:true});
+
+  wrap.addEventListener('touchmove', e=>{
+    if(locked) return;
+    const dx=Math.abs(e.touches[0].clientX-startX);
+    const dy=Math.abs(e.touches[0].clientY-startY);
+    // Need at least 6px movement before locking to avoid accidental locks
+    if(dx<6&&dy<6) return;
+    if(dx>dy){
+      locked='x';
+      wrap.classList.add('scroll-x');
+    } else {
+      locked='y';
+      wrap.classList.add('scroll-y');
+    }
+  },{passive:true});
+
+  wrap.addEventListener('touchend', ()=>{
+    locked=null;
+    wrap.classList.remove('scroll-x','scroll-y');
+  },{passive:true});
+}
+
 function initPrefs(){
   const p=loadPrefs();
   applyA11yOverrides();
@@ -2037,6 +2072,43 @@ if(savedRefresh) document.getElementById('refresh-token-input').value=savedRefre
 renderMappingTable();
 renderGroupsTable();
 initPrefs();
+initTableTouchLock();
+
+// ── Orientation / resize handling ────────────────────────────────────────
+(function(){
+  let resizeTimer;
+  function onResize(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{
+      // Force container to recalculate width before anything else
+      const container=document.querySelector('.container');
+      if(container){
+        container.style.display='none';
+        void container.offsetWidth; // trigger reflow
+        container.style.display='';
+      }
+      // Reset canvas dimensions before resize so they don't retain landscape size
+      ['barChart','pieChart','timeChart'].forEach(id=>{
+        const canvas=document.getElementById(id);
+        if(canvas){ canvas.style.width='100%'; canvas.style.height=''; canvas.removeAttribute('width'); canvas.removeAttribute('height'); }
+      });
+      // Resize all active Chart.js instances
+      [barChart,pieChart,timeChart].forEach(c=>{
+        if(c) c.resize();
+      });
+      Object.values(expandCharts).forEach(c=>{
+        if(c) c.resize();
+      });
+      // Re-render dashboard to recalculate layout if data is loaded
+      if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+    }, 150);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', ()=>{
+    // orientationchange fires before dimensions update — wait a beat
+    setTimeout(onResize, 400);
+  });
+})();
 </script>
 </body>
 </html>
