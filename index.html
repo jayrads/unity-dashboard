@@ -68,6 +68,14 @@
   .lb-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
   .lb-filters label { font-size: 12px; color: var(--text-mid); white-space: nowrap; }
   body.dark .lb-filters label { color: var(--text-main) !important; font-size: 13px !important; }
+  @media(max-width:600px){
+    .lb-filters { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .lb-filters > * { width: 100%; }
+    .lb-name-filter { width: 100% !important; }
+    .cat-filter-wrap { width: 100%; }
+    .cat-filter-btn { width: 100%; }
+    .split-filter-row { flex-wrap: wrap; }
+  }
   .lb-name-filter { font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border-mid); border-radius: 8px; background: var(--bg-card); color: var(--text-main); width: 180px; }
   .lb-name-filter:focus { outline: none; border-color: #999; }
   /* Category multiselect dropdown */
@@ -155,6 +163,7 @@
   .metric-sub { font-size: 11px; color: var(--text-main); margin-top: 2px; }
   .metric-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 200px; background: #1a1a1a; color: #f0f0f0; font-size: 11px; padding: 7px 10px; border-radius: 7px; z-index: 100; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.3); pointer-events: none; }
   .metric:hover .metric-tip { display: block; }
+  .metric.tip-open .metric-tip { display: block; }
   body.dark .metric-tip { background: #ffffff; color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
 
   .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -166,7 +175,10 @@
   .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
   .section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px; }
-  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; overflow-x: auto; }
+  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: auto; margin-bottom: 20px; }
+  @media(max-width:700px){ .table-wrap { max-height: 70vh; } }
+  .lb-table thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-thead); }
+  .lb-table thead th.th-device { z-index: 4; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
   th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 12px; border-bottom: 0.5px solid var(--border); background: var(--bg-input); white-space: nowrap; }
   th.sortable { cursor: pointer; user-select: none; }
@@ -182,6 +194,17 @@
   /* Leaderboard: non-device cols are 1px smaller than device col */
   .lb-table td { font-size: calc(1em - 1px); }
   .lb-table td.td-device { font-size: 1em; }
+  /* Sticky device column header */
+  .lb-table thead th.th-device { position: sticky; left: 0; z-index: 3; background: var(--bg-thead); box-shadow: 2px 0 4px var(--shadow); }
+  .lb-table tbody td.td-device { position: sticky; left: 0; z-index: 1; background: var(--bg-card); box-shadow: 2px 0 4px var(--shadow); }
+  .lb-table tbody tr:hover td.td-device { background: var(--bg-row-alt); }
+  /* Sticky device column on horizontal scroll */
+  .lb-table th.th-chevron,
+  .lb-table td.td-chevron { }
+  .lb-table th.th-device,
+  .lb-table td.td-device { position: sticky; left: 0; background: var(--bg-card); z-index: 2; box-shadow: 2px 0 4px var(--shadow); }
+  .lb-table tr:hover td.td-chevron,
+  .lb-table tr:hover td.td-device { background: var(--bg-row-alt); }
 
   #dashboard { display: none; }
   .empty { font-size: 13px; color: var(--text-light); padding: 20px 0; text-align: center; }
@@ -284,6 +307,7 @@
   /* split + notes cols in settings table */
   .split-col { width:70px; text-align:center; }
   .notes-col { width:180px; }
+  @media(max-width:700px){ .notes-col { min-width:130px; width:130px; } }
   .mapping-table input[type=number] { width:100%; font-size:12px; padding:4px 7px; border:0.5px solid #ccc; border-radius:5px; background:#fff; color:#1a1a1a; text-align:center; }
   .mapping-table textarea.notes-input { width:100%; font-size:11px; padding:4px 7px; border:0.5px solid #ccc; border-radius:5px; background:#fff; color:#1a1a1a; resize:vertical; height:45px; min-height:38px; font-family:inherit; }
 </style>
@@ -505,9 +529,9 @@
     <div class="table-wrap">
       <table class="lb-table">
         <thead><tr>
-          <th style="width:28px"></th>
+          <th class="th-chevron" style="width:28px"></th>
           <th class="sortable" data-col="rank"  data-type="num" onclick="sortBy(this)">#<span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="name"  data-type="str" onclick="sortBy(this)">Device<span class="sort-icon">↕</span></th>
+          <th class="th-device sortable" data-col="name"  data-type="str" onclick="sortBy(this)">Device<span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="group" data-type="str" onclick="sortBy(this)">Category<span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="split" data-type="num" style="text-align:right" onclick="sortBy(this)">UNO %<span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="days"  data-type="num" style="text-align:right" onclick="sortBy(this)">Days<span class="sort-icon">↕</span></th>
@@ -1171,7 +1195,7 @@ function renderTable(devices){
     const noteIcon=notes?`<span class="note-icon">📝<span class="note-tip">${notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></span>`:'';
     const safeId=d.id.replace(/'/g,"\\'");
     return `<tr data-lid="${d.id}">
-      <td><button class="btn-chevron" id="chev-${d.id.slice(-8)}" onclick="toggleExpand('${safeId}',this)">▶</button></td>
+      <td class="td-chevron"><button class="btn-chevron" id="chev-${d.id.slice(-8)}" onclick="toggleExpand('${safeId}',this)">▶</button></td>
       <td style="color:var(--text-light)">${rank}</td>
       <td class="td-device"><span style="background:${devColor(d.id)};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle"></span><strong style="font-weight:500">${n}</strong>${noteIcon}</td>
       <td style="color:${devColor(d.id)}">${g}</td>
@@ -1517,6 +1541,19 @@ function renderDashboard(stored){
 
 
 // ── Settings panel ──────────────────────────────────────────────────────
+// Touch support for metric card tooltips
+document.addEventListener('touchstart', e=>{
+  const metric=e.target.closest('.metric');
+  // Close any open tips first
+  document.querySelectorAll('.metric.tip-open').forEach(m=>{
+    if(m!==metric) m.classList.remove('tip-open');
+  });
+  if(metric&&metric.querySelector('.metric-tip')){
+    metric.classList.toggle('tip-open');
+    e.preventDefault();
+  }
+}, {passive:false});
+
 function toggleImportAccordion(){
   const btn=document.getElementById('import-toggle');
   const body=document.getElementById('import-accordion-body');
