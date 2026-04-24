@@ -491,10 +491,10 @@
     <div class="filter-row">
       <label>Show:</label>
       <button class="fbtn" onclick="setPreset('prev',this)">Prev day</button>
-      <button class="fbtn" onclick="setPreset(7,this)">Last 7 days</button>
+      <button class="fbtn active" onclick="setPreset(7,this)">Last 7 days</button>
       <button class="fbtn" onclick="setPreset(14,this)">Last 14 days</button>
       <button class="fbtn" onclick="setPreset(30,this)">Last 30 days</button>
-      <button class="fbtn active" onclick="setPreset(0,this)">All time</button>
+      <button class="fbtn" onclick="setPreset(0,this)">All time</button>
     </div>
     <div class="custom-range">
       <label>Custom:</label>
@@ -651,13 +651,13 @@ function loadCurrentDash(){
   // Load entries
   globalStored=loadStored();
   // Reset filter state
-  filterMode='all'; filterDays=0; filterFrom=''; filterTo='';
+  filterMode='days'; filterDays=7; filterFrom=''; filterTo='';
   activeCatFilters.clear(); activeSplitFilters.clear(); lbNameFilter='';
   const nf=document.getElementById('lb-name-filter'); if(nf) nf.value='';
   const dbi=document.getElementById('days-back-input'); if(dbi){ dbi.value=''; dbi.classList.remove('active'); }
   document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
-  const allBtn=document.querySelector('.fbtn[onclick*="setPreset(0"]');
-  if(allBtn) allBtn.classList.add('active');
+  const sevenBtn=document.querySelector('.fbtn[onclick*="setPreset(7"]');
+  if(sevenBtn) sevenBtn.classList.add('active');
   document.getElementById('date-from').value='';
   document.getElementById('date-to').value='';
   document.getElementById('range-label').textContent='';
@@ -921,8 +921,8 @@ let sortCol='total';
 let sortDir='desc';
 
 // Filter state: mode = 'all' | 'prev' | 'days' | 'custom'
-let filterMode='all';
-let filterDays=0;
+let filterMode='days';
+let filterDays=7;
 let filterFrom='';
 let filterTo='';
 
@@ -1308,8 +1308,8 @@ function applyDaysBack(val){
 function clearDaysBack(){
   document.getElementById('days-back-input').value='';
   document.getElementById('days-back-input').classList.remove('active');
-  filterMode='all'; filterDays=0;
-  document.querySelector('.fbtn[onclick*="setPreset(0"]').classList.add('active');
+  filterMode='days'; filterDays=7;
+  document.querySelector('.fbtn[onclick*="setPreset(7"]').classList.add('active');
   if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
 }
 
