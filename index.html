@@ -2076,37 +2076,35 @@ initTableTouchLock();
 
 // ── Orientation / resize handling ────────────────────────────────────────
 (function(){
-  let resizeTimer;
-  function onResize(){
-    clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(()=>{
-      // Force container to recalculate width before anything else
-      const container=document.querySelector('.container');
-      if(container){
-        container.style.display='none';
-        void container.offsetWidth; // trigger reflow
-        container.style.display='';
-      }
-      // Reset canvas dimensions before resize so they don't retain landscape size
-      ['barChart','pieChart','timeChart'].forEach(id=>{
-        const canvas=document.getElementById(id);
-        if(canvas){ canvas.style.width='100%'; canvas.style.height=''; canvas.removeAttribute('width'); canvas.removeAttribute('height'); }
-      });
-      // Resize all active Chart.js instances
-      [barChart,pieChart,timeChart].forEach(c=>{
-        if(c) c.resize();
-      });
-      Object.values(expandCharts).forEach(c=>{
-        if(c) c.resize();
-      });
-      // Re-render dashboard to recalculate layout if data is loaded
-      if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
-    }, 150);
+  let lastW=window.innerWidth, lastH=window.innerHeight;
+
+  function doReflow(){
+    // Force container to recalculate width
+    const container=document.querySelector('.container');
+    if(container){ container.style.display='none'; void container.offsetWidth; container.style.display=''; }
+    // Reset canvas dimensions so they don't retain old size
+    ['barChart','pieChart','timeChart'].forEach(id=>{
+      const canvas=document.getElementById(id);
+      if(canvas){ canvas.style.width='100%'; canvas.style.height=''; canvas.removeAttribute('width'); canvas.removeAttribute('height'); }
+    });
+    [barChart,pieChart,timeChart].forEach(c=>{ if(c) c.resize(); });
+    Object.values(expandCharts).forEach(c=>{ if(c) c.resize(); });
+    if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+    lastW=window.innerWidth; lastH=window.innerHeight;
   }
-  window.addEventListener('resize', onResize);
+
+  let resizeTimer;
+  window.addEventListener('resize', ()=>{
+    // Only trigger on actual dimension changes — ignore scroll-triggered resize on mobile
+    const w=window.innerWidth, h=window.innerHeight;
+    if(w===lastW&&h===lastH) return;
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(doReflow, 200);
+  });
+
   window.addEventListener('orientationchange', ()=>{
-    // orientationchange fires before dimensions update — wait a beat
-    setTimeout(onResize, 400);
+    clearTimeout(resizeTimer);
+    setTimeout(doReflow, 400);
   });
 })();
 </script>
