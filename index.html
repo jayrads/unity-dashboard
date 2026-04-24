@@ -198,7 +198,11 @@
   .bar-fill { border-radius: 2px; height: 5px; }
   /* Leaderboard: non-device cols are 1px smaller than device col */
   .lb-table td { font-size: calc(1em - 1px); }
-  .lb-table td.td-device { font-size: 1em; }
+  .lb-table td.td-device { font-size: 1em; white-space: nowrap; position: relative; cursor: default; }
+  .dev-tip { display:none; position:fixed; min-width:140px; background:#1a1a1a; color:#f0f0f0; font-size:11px; padding:6px 10px; border-radius:7px; z-index:9999; white-space:pre; line-height:1.6; box-shadow:0 2px 8px rgba(0,0,0,0.3); pointer-events:none; border:none; }
+  body.dark .dev-tip { background:#ffffff; color:#1a1a1a; }
+  .lb-table td.td-device:hover .dev-tip { display:block; }
+  .lb-table td.td-device.tip-open .dev-tip { display:block; }
   /* Sticky device column header */
   .lb-table thead th.th-device { position: sticky; left: 0; z-index: 3; background: var(--bg-thead); box-shadow: 2px 0 4px var(--shadow); }
   .lb-table tbody td.td-device { position: sticky; left: 0; z-index: 1; background: var(--bg-card); box-shadow: 2px 0 4px var(--shadow); }
@@ -318,6 +322,7 @@
 </style>
 </head>
 <body>
+<div id="dev-tooltip" style="display:none;position:fixed;min-width:140px;background:#1a1a1a;color:#f0f0f0;font-size:12px;padding:6px 10px;border-radius:7px;z-index:9999;white-space:pre;line-height:1.6;box-shadow:0 4px 12px rgba(0,0,0,0.3);pointer-events:none;"></div>
 <div class="container">
   <!-- Top row: dashboard controls + theme right-justified -->
   <div class="dash-bar-top">
@@ -454,6 +459,20 @@
             <option value="0">Reward Date (as recorded)</option>
           </select>
         </div>
+        <div class="floor-date-row" style="margin-top:8px;">
+          <label style="font-size:12px;color:var(--text-mid);white-space:nowrap;">Fetch uptime analytics:</label>
+          <select id="fetch-uptime-input" style="font-size:12px;padding:5px 8px;border:0.5px solid var(--border-mid);border-radius:8px;background:var(--bg-card);color:var(--text-main);cursor:pointer;" onchange="saveFetchUptime(this.value)">
+            <option value="1">Yes — fetch uptime data</option>
+            <option value="0" selected>No — hide uptime features</option>
+          </select>
+        </div>
+        <div id="uptime-threshold-row" class="floor-date-row" style="margin-top:8px;">
+          <label style="font-size:12px;color:var(--text-mid);white-space:nowrap;">Uptime warning threshold:</label>
+          <input type="number" id="uptime-threshold-input" min="0" max="100" value="95"
+            style="width:64px;font-size:12px;padding:5px 8px;border:0.5px solid var(--border-mid);border-radius:8px;background:var(--bg-card);color:var(--text-main);text-align:center;"
+            onchange="saveUptimeThreshold(this.value)">
+          <span class="floor-date-hint">% — dot turns yellow when uptime falls below this</span>
+        </div>
       </div>
 
       <div class="settings-actions">
@@ -504,6 +523,18 @@
       </div>
     </div>
 
+    <div class="chart-row" id="uptime-chart-row" style="display:none;">
+      <div class="chart-wrap">
+        <div class="chart-title">Avg uptime by device</div>
+        <div id="leg-uptime-dev" class="legend"></div>
+        <div style="position:relative;width:100%;height:220px;"><canvas id="uptimeDevChart"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Avg uptime by category</div>
+        <div style="position:relative;width:100%;height:220px;"><canvas id="uptimeGrpChart"></canvas></div>
+      </div>
+    </div>
+
     <div class="chart-wrap" style="margin-bottom:16px;">
       <div class="chart-title">Daily earnings</div>
       <div style="position:relative;width:100%;height:170px;"><canvas id="timeChart"></canvas></div>
@@ -537,13 +568,14 @@
           <th class="th-chevron" style="width:28px"></th>
           <th class="sortable" data-col="rank"  data-type="num" onclick="sortBy(this)">#<span class="sort-icon">↕</span></th>
           <th class="th-device sortable" data-col="name"  data-type="str" onclick="sortBy(this)">Device<span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="group" data-type="str" onclick="sortBy(this)">Category<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="group" data-type="str" onclick="sortBy(this)">Cat<span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="split" data-type="num" style="text-align:right" onclick="sortBy(this)">UNO %<span class="sort-icon">↕</span></th>
           <th class="sortable" data-col="days"  data-type="num" style="text-align:right" onclick="sortBy(this)">Days<span class="sort-icon">↕</span></th>
           <th class="sortable sorted-desc" data-col="total" data-type="num" style="text-align:right" onclick="sortBy(this)">Total<span class="sort-icon">↓</span></th>
-          <th class="sortable" data-col="avg"   data-type="num" style="text-align:right" onclick="sortBy(this)">Avg/day<span class="sort-icon">↕</span></th>
-          <th class="sortable" data-col="max"   data-type="num" style="text-align:right" onclick="sortBy(this)">Best day<span class="sort-icon">↕</span></th>
-          <th style="min-width:100px">Share</th>
+          <th class="sortable" data-col="avg"   data-type="num" style="text-align:right" onclick="sortBy(this)">Avg<span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="max"   data-type="num" style="text-align:right" onclick="sortBy(this)">Best<span class="sort-icon">↕</span></th>
+          <th style="min-width:80px">Share</th>
+          <th class="sortable lb-uptime-col" data-col="avgup" data-type="num" style="text-align:right;white-space:nowrap" onclick="sortBy(this)">Avg Up%<span class="sort-icon">↕</span></th>
           <th style="width:44px"></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -562,6 +594,18 @@ let currentDash=DEFAULT_DASH_NAME;
 function storageKey(type, name){ return 'unity_db_'+type+'_'+name; }
 function getStorageKey(){ return storageKey('entries', currentDash); }
 function getMappingKey(){ return storageKey('mapping', currentDash); }
+function getUptimeKey(){ return storageKey('uptime', currentDash); }
+
+function loadUptime(){
+  try{ const r=localStorage.getItem(getUptimeKey()); return r?JSON.parse(r):{}; }
+  catch{ return {}; }
+}
+function saveUptime(u){
+  try{ localStorage.setItem(getUptimeKey(),JSON.stringify(u)); }
+  catch(e){ console.warn('Uptime save failed',e); }
+}
+// uptimeData[licenseId] = { history: {"2026-04-23": 0.997, ...}, isOnline: bool, currentUptime: float }
+let uptimeData={};
 
 // Backwards compat with old single-dashboard keys
 const STORAGE_KEY='unity_nodes_entries';   // legacy — read on first load only
@@ -602,6 +646,8 @@ function saveCurrentState(){
 function loadCurrentDash(){
   // Load mapping for this dashboard
   loadMapping();
+  // Load uptime data for this dashboard
+  uptimeData=loadUptime();
   // Load entries
   globalStored=loadStored();
   // Reset filter state
@@ -728,18 +774,22 @@ const DEFAULT_GROUP='Default';
 let floorDate=''; // Per-dashboard floor date — entries before this date are excluded
 
 let dateOffset=-1; // Days to shift displayed dates (-1 = Work Date by default)
+let uptimeThreshold=0.95; // Dot turns yellow below this uptime (default 95%)
+let fetchUptimeEnabled=false; // Whether to fetch uptime analytics and show uptime UI
 
 function loadMapping(){
   userMapping={}; userGroups={}; floorDate=''; dateOffset=0;
-  try{const r=localStorage.getItem(getMappingKey());if(r){const d=JSON.parse(r);userMapping=d.mapping||{};userGroups=d.groups||{};floorDate=d.floorDate||'';dateOffset=d.dateOffset!=null?d.dateOffset:-1;}}
+  try{const r=localStorage.getItem(getMappingKey());if(r){const d=JSON.parse(r);userMapping=d.mapping||{};userGroups=d.groups||{};floorDate=d.floorDate||'';dateOffset=d.dateOffset!=null?d.dateOffset:-1;uptimeThreshold=d.uptimeThreshold!=null?d.uptimeThreshold:0.95;fetchUptimeEnabled=d.fetchUptimeEnabled!=null?!!d.fetchUptimeEnabled:false;}}
   catch{}
   if(!userGroups[DEFAULT_GROUP]) userGroups[DEFAULT_GROUP]={color:'#888780'};
   updateFloorDateUI();
   updateDateOffsetUI();
+  updateUptimeThresholdUI();
+  updateFetchUptimeUI();
 }
 function saveMapping(){
   if(!userGroups[DEFAULT_GROUP]) userGroups[DEFAULT_GROUP]={color:'#888780'};
-  try{localStorage.setItem(getMappingKey(),JSON.stringify({mapping:userMapping,groups:userGroups,floorDate,dateOffset}));}
+  try{localStorage.setItem(getMappingKey(),JSON.stringify({mapping:userMapping,groups:userGroups,floorDate,dateOffset,uptimeThreshold,fetchUptimeEnabled}));}
   catch(err){console.warn('Mapping save failed',err);}
 }
 
@@ -789,6 +839,24 @@ function devSplit(id){ const s=userMapping[id]&&userMapping[id].split; return (s
 function devNotes(id){ return (userMapping[id]&&userMapping[id].notes)||''; }
 function fmt(m){return '$'+(m/1e6).toFixed(2);}
 function fmtDate(s){return s?s.slice(0,10):'?';}
+function fmtUptime(v){ if(v==null||v===undefined||isNaN(v)) return '—'; return (v*100).toFixed(1)+'%'; }
+function avgUptimeForDevice(licenseId, daily){
+  // Average uptime across dates in the current filtered period that have uptime data
+  if(!uptimeData[licenseId]||!uptimeData[licenseId].history) return null;
+  const hist=uptimeData[licenseId].history;
+  const dates=Object.keys(daily||{});
+  if(!dates.length) return null;
+  const vals=dates.map(d=>hist[d]).filter(v=>v!=null);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function avgUptimeForGroup(groupName, devices){
+  // Average uptime across all devices in a group for current period
+  const groupDevices=devices.filter(d=>devGroup(d.id)===groupName);
+  const vals=groupDevices.map(d=>avgUptimeForDevice(d.id,d.daily)).filter(v=>v!=null);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
 function dispDate(s){
   if(!s||s==='?') return s;
   if(dateOffset===0) return s;
@@ -803,6 +871,37 @@ function rawDate(s){
   d.setUTCDate(d.getUTCDate()-dateOffset);
   return d.toISOString().slice(0,10);
 }
+function saveFetchUptime(val){
+  const wasOff=!fetchUptimeEnabled;
+  fetchUptimeEnabled=val==='1';
+  saveMapping();
+  updateFetchUptimeUI();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+  if(wasOff&&fetchUptimeEnabled){
+    setTimeout(()=>alert('Uptime analytics enabled.\n\nClick \u21bb Refresh data to fetch uptime history for your devices.'),100);
+  }
+}
+function updateFetchUptimeUI(){
+  const sel=document.getElementById('fetch-uptime-input');
+  if(sel) sel.value=fetchUptimeEnabled?'1':'0';
+  const threshRow=document.getElementById('uptime-threshold-row');
+  if(threshRow) threshRow.style.display=fetchUptimeEnabled?'':'none';
+  // Hide/show uptime columns in leaderboard header
+  document.querySelectorAll('.lb-uptime-col').forEach(el=>el.style.display=fetchUptimeEnabled?'':'none');
+}
+
+function saveUptimeThreshold(val){
+  const v=parseFloat(val);
+  if(isNaN(v)) return;
+  uptimeThreshold=Math.min(100,Math.max(0,v))/100;
+  saveMapping();
+  if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
+}
+function updateUptimeThresholdUI(){
+  const inp=document.getElementById('uptime-threshold-input');
+  if(inp) inp.value=Math.round(uptimeThreshold*100);
+}
+
 function saveDateOffset(val){
   dateOffset=parseInt(val)||0;
   saveMapping();
@@ -815,7 +914,7 @@ function updateDateOffsetUI(){
 }
 function todayStr(){return new Date().toISOString().slice(0,10);}
 
-let barChart,pieChart,timeChart;
+let barChart,pieChart,timeChart,uptimeDevChart,uptimeGrpChart;
 let globalStored={};
 let currentDevices=[];
 let sortCol='total';
@@ -879,6 +978,8 @@ const API_KEY='sb_publishable_yKqi0fu5vV6G4ryUIMJuzw_NCoFEl1c';
 // Auth via the active sb-api-auth-token Supabase project
 const AUTH_URL='https://api.unityedge.io/auth/v1/token?grant_type=refresh_token';
 const DATA_URL='https://api.unityedge.io/rest/v1/rpc/rewards_get_allocations';
+const LICENSES_URL='https://api.unityedge.io/functions/v1/licenses_get_licenses';
+const ANALYTICS_URL='https://api.unityedge.io/rest/v1/rpc/license_analytics_get_by_license';
 
 function loadRefreshToken(){ return localStorage.getItem(TOKEN_KEY)||''; }
 function saveRefreshToken(t){
@@ -911,6 +1012,76 @@ async function getAccessToken(refreshToken){
   return data.access_token;
 }
 
+async function fetchLicenseStatuses(accessToken){
+  // Paginate through all licenses (max take=100 per request)
+  let skip=0, total=0;
+  while(true){
+    const resp=await fetch(LICENSES_URL,{
+      method:'POST',
+      headers:{
+        'accept':'*/*',
+        'apikey':API_KEY,
+        'authorization':'Bearer '+accessToken,
+        'content-type':'application/json',
+        'x-client-info':'supabase-js-web/2.87.1',
+      },
+      body:JSON.stringify({role:'uno',skip,take:100})
+    });
+    if(!resp.ok){
+      const errTxt=await resp.text();
+      console.warn('Licenses error body:', errTxt.slice(0,300));
+      throw new Error('Licenses fetch failed: '+resp.status+' '+errTxt.slice(0,80));
+    }
+    const data=await resp.json();
+    const licenses=Array.isArray(data)?data:(data.data||data.licenses||[]);
+    if(!licenses.length) break;
+    licenses.forEach(lic=>{
+      if(!lic.id) return;
+      if(!uptimeData[lic.id]) uptimeData[lic.id]={history:{},isOnline:false,currentUptime:0};
+      uptimeData[lic.id].isOnline=lic.isOnline||false;
+      uptimeData[lic.id].currentUptime=lic.uptime||0;
+    });
+    total+=licenses.length;
+    if(licenses.length<100) break; // last page
+    skip+=100;
+  }
+  saveUptime(uptimeData);
+  return total;
+}
+
+async function fetchUptimeForLicense(licenseId, accessToken, missingDates){
+  // Determine date range — targeted if we have some history, full range if none
+  const hasHistory=uptimeData[licenseId]&&Object.keys(uptimeData[licenseId].history||{}).length>0;
+  let startDate, endDate;
+  if(hasHistory&&missingDates.length>0){
+    const sorted=[...missingDates].sort();
+    startDate=sorted[0];
+    endDate=sorted[sorted.length-1];
+  } else {
+    startDate='2025-01-01';
+    endDate='2030-01-01';
+  }
+  const resp=await fetch(ANALYTICS_URL,{
+    method:'POST',
+    headers:{
+      'accept':'*/*',
+      'apikey':API_KEY,
+      'authorization':'Bearer '+accessToken,
+      'content-type':'application/json',
+      'content-profile':'public',
+      'x-client-info':'supabase-js-web/2.87.1',
+    },
+    body:JSON.stringify({licenseId,startDate,endDate})
+  });
+  if(!resp.ok) return;
+  const data=await resp.json();
+  const records=Array.isArray(data)?data:(data.data||[]);
+  if(!uptimeData[licenseId]) uptimeData[licenseId]={history:{},isOnline:false,currentUptime:0};
+  records.forEach(r=>{
+    if(r.date&&r.uptime!=null) uptimeData[licenseId].history[r.date]=r.uptime;
+  });
+}
+
 async function fetchAll(){
   const fetchEl=document.getElementById('fetch-status');
   const btn=document.getElementById('refresh-btn');
@@ -923,11 +1094,29 @@ async function fetchAll(){
   try{ accessToken=await getAccessToken(refreshToken); }
   catch(e){ fetchEl.textContent='⚠ '+e.message; btn.disabled=false; return; }
 
+  // Load existing uptime data
+  uptimeData=loadUptime();
+
+  // Step 1: Fetch live license statuses (only if uptime enabled)
+  if(fetchUptimeEnabled){
+    fetchEl.textContent='Fetching live license status…';
+    try{ await fetchLicenseStatuses(accessToken); }
+    catch(e){ console.warn('License status fetch failed:',e); }
+  }
+
+  // Step 2: Fetch rewards
   const stored=loadStored();
+  // Track which dates per license existed BEFORE this fetch
+  const prevDatesByLicense={};
+  Object.values(stored).forEach(e=>{
+    if(!prevDatesByLicense[e.licenseId]) prevDatesByLicense[e.licenseId]=new Set();
+    prevDatesByLicense[e.licenseId].add(e.date);
+  });
+
   let skip=0, totalAdded=0, page=1;
   try{
     while(true){
-      fetchEl.textContent='Fetching page '+page+' (records '+skip+'–'+(skip+99)+')…';
+      fetchEl.textContent='Fetching rewards page '+page+'…';
       const resp=await fetch(DATA_URL,{
         method:'POST',
         headers:{
@@ -954,13 +1143,41 @@ async function fetchAll(){
         if(stored[entry.id]){ dupes++; }
         else{ stored[entry.id]={licenseId:entry.licenseId,date:fmtDate(entry.completedAt||entry.createdAt),amount:entry.amountMicros}; added++; totalAdded++; }
       }
-      if(added===0&&dupes>0){ fetchEl.textContent='✓ Caught up — '+totalAdded+' new entries (stopped at page '+page+').'; break; }
+      if(added===0&&dupes>0){ fetchEl.textContent='✓ Caught up — '+totalAdded+' new entries.'; break; }
       skip+=100; page++;
       if(page>50){ fetchEl.textContent='✓ Stopped at 50 pages — '+totalAdded+' new entries.'; break; }
     }
   }catch(e){ fetchEl.textContent='⚠ Fetch error: '+e.message; }
-  saveStored(stored); globalStored=stored; btn.disabled=false;
-  if(totalAdded>0) renderDashboard(stored);
+
+  saveStored(stored); globalStored=stored;
+
+  // Step 3: Fetch uptime for licenses with new reward dates
+  // Find licenses that have reward dates not yet in uptime history
+  const licensesNeedingUptime=new Set();
+  const missingDatesByLicense={};
+  Object.values(stored).forEach(e=>{
+    const lid=e.licenseId;
+    const hasUptime=uptimeData[lid]&&uptimeData[lid].history&&uptimeData[lid].history[e.date]!=null;
+    if(!hasUptime){
+      licensesNeedingUptime.add(lid);
+      if(!missingDatesByLicense[lid]) missingDatesByLicense[lid]=[];
+      missingDatesByLicense[lid].push(e.date);
+    }
+  });
+
+  if(fetchUptimeEnabled&&licensesNeedingUptime.size>0){
+    let done=0;
+    for(const lid of licensesNeedingUptime){
+      fetchEl.textContent='Fetching uptime ('+( ++done)+'/'+licensesNeedingUptime.size+')…';
+      try{ await fetchUptimeForLicense(lid, accessToken, missingDatesByLicense[lid]); }
+      catch(e){ console.warn('Uptime fetch failed for',lid,e); }
+    }
+    saveUptime(uptimeData);
+  }
+
+  btn.disabled=false;
+  fetchEl.textContent='✓ Done — '+totalAdded+' new entries'+(licensesNeedingUptime.size>0?' · uptime synced for '+licensesNeedingUptime.size+' device'+(licensesNeedingUptime.size!==1?'s':''):'')+'.'  ;
+  if(Object.keys(stored).length>0) renderDashboard(stored);
 }
 
 function importFromFile(input){
@@ -1151,6 +1368,7 @@ function getVal(d,col,rank){
     case 'name':  return devName(d.id);
     case 'group': return devGroup(d.id)||'';
     case 'split': return devSplit(d.id)!=null?devSplit(d.id):9999;
+    case 'avgup': return avgUptimeForDevice(d.id,d.daily)!=null?avgUptimeForDevice(d.id,d.daily):-1;
     case 'days':  return d.days;
     case 'total': return d.total;
     case 'avg':   return d.total/d.days;
@@ -1199,10 +1417,19 @@ function renderTable(devices){
     const notes=devNotes(d.id);
     const noteIcon=notes?`<span class="note-icon">📝<span class="note-tip">${notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></span>`:'';
     const safeId=d.id.replace(/'/g,"\\'");
+    const curUp=uptimeData[d.id]?.currentUptime;
+    const isOnline=uptimeData[d.id]?.isOnline;
+    const statusTxt=fetchUptimeEnabled&&uptimeData[d.id]!=null
+      ?(isOnline?'Online':'Offline')+(curUp!=null?'\nUptime: '+(curUp*100).toFixed(1)+'%':'')
+      :'';
+    const dotColor=(!fetchUptimeEnabled||uptimeData[d.id]==null)?null:(!isOnline?'#E24B4A':(curUp!=null&&curUp<uptimeThreshold?'#F0A500':'#1D9E75'));
+    const onlineDot=dotColor?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};margin-right:5px;vertical-align:middle;flex-shrink:0"></span>`:'';
+
+    const avgUp=avgUptimeForDevice(d.id,d.daily);
     return `<tr data-lid="${d.id}">
       <td class="td-chevron"><button class="btn-chevron" id="chev-${d.id.slice(-8)}" onclick="toggleExpand('${safeId}',this)">▶</button></td>
       <td style="color:var(--text-light)">${rank}</td>
-      <td class="td-device"><span style="background:${devColor(d.id)};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle"></span><strong style="font-weight:500">${n}</strong>${noteIcon}</td>
+      <td class="td-device" data-tip="${statusTxt.replace(/"/g,'&quot;')}" onmouseenter="showDevTip(this)" onmouseleave="hideDevTip()" ontouchstart="toggleDevTip(this,event)">${onlineDot}<span style="background:${devColor(d.id)};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle"></span><strong style="font-weight:500">${n}</strong>${noteIcon}</td>
       <td style="color:${devColor(d.id)}">${g}</td>
       <td style="text-align:right;color:var(--text-main)">${splitDisp}</td>
       <td style="text-align:right">${d.days}</td>
@@ -1210,10 +1437,11 @@ function renderTable(devices){
       <td style="text-align:right">${fmt(avg)}</td>
       <td style="text-align:right">${fmt(d.max)}</td>
       <td><div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${devColor(d.id)}"></div></div><span style="font-size:11px;color:#999">${pct}%</span></td>
+      ${fetchUptimeEnabled?`<td class="lb-uptime-col" style="text-align:right;white-space:nowrap;color:var(--text-mid)">${fmtUptime(avgUp)}</td>`:''}
       <td><button class="btn-edit" onclick="editDevice('${d.id}','${n}')">Edit</button></td>
     </tr>
     <tr class="expand-row" id="expand-${d.id.slice(-8)}" style="display:none">
-      <td colspan="11"><div class="expand-inner" id="expand-inner-${d.id.slice(-8)}"></div></td>
+      <td colspan="${fetchUptimeEnabled?12:11}"><div class="expand-inner" id="expand-inner-${d.id.slice(-8)}"></div></td>
     </tr>`;
   }).join('');
 }
@@ -1251,49 +1479,67 @@ function renderExpandRow(licenseId, inner, shortId){
   const n=devName(licenseId);
   const color=devColor(licenseId);
 
+  const hist=(uptimeData[licenseId]&&uptimeData[licenseId].history)||{};
+  const uptimeVals=dates.map(d=>hist[d]!=null?+(hist[d]*100).toFixed(2):null);
+  const hasUptime=fetchUptimeEnabled&&uptimeVals.some(v=>v!=null);
+
   inner.innerHTML=`
     <div class="expand-title">${n} — daily breakdown (${dates.length} day${dates.length!==1?'s':''})</div>
     <div class="expand-chart-wrap"><canvas id="expand-chart-${shortId}"></canvas></div>
     <table class="expand-table">
-      <thead><tr><th>Date</th><th style="text-align:right">Amount</th><th style="text-align:right">vs avg</th></tr></thead>
+      <thead><tr><th>Date</th><th style="text-align:right">Amount</th><th style="text-align:right">vs avg</th>${hasUptime?'<th style="text-align:right">Uptime</th>':''}</tr></thead>
       <tbody>
-        ${dates.slice().reverse().map(date=>{
+        ${dates.slice().reverse().map((date,ri)=>{
+          const dateIdx=dates.indexOf(date);
           const amt=daily[date]/1e6;
           const avg=dev.total/1e6/dates.length;
           const diff=((amt-avg)/avg*100).toFixed(0);
           const sign=diff>=0?'+':'';
           const isBest=date===maxDate;
+          const up=hist[date]!=null?fmtUptime(hist[date]):'—';
           return `<tr class="${isBest?'best-day':''}">
             <td>${dispDate(date)}${isBest?' ★':''}</td>
             <td style="text-align:right">${fmt(daily[date])}</td>
             <td style="text-align:right;color:${diff>=0?'#1D9E75':'#E24B4A'}">${sign}${diff}%</td>
+            ${hasUptime?`<td style="text-align:right;color:var(--text-mid)">${up}</td>`:''}
           </tr>`;
         }).join('')}
       </tbody>
     </table>`;
 
-  // Render mini chart
+  // Render mini dual-axis chart
   if(expandCharts[licenseId]) expandCharts[licenseId].destroy();
   const avgLine=dev.total/1e6/dates.length;
+  const expandDatasets=[
+    {type:'bar', data:amounts, backgroundColor:dates.map(d=>d===maxDate?'#F0A500':color+'99'), borderRadius:2, borderSkipped:false, yAxisID:'y'},
+    {type:'line', data:dates.map(()=>+avgLine.toFixed(4)), borderColor:'rgba(150,150,150,0.5)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false, yAxisID:'y'}
+  ];
+  if(hasUptime){
+    expandDatasets.push({type:'line', data:uptimeVals, borderColor:'#F0A500', borderWidth:1.5, pointRadius:2, pointBackgroundColor:'#F0A500', fill:false, yAxisID:'y2', tension:0.3});
+  }
+  const expandScales={
+    x:{ticks:{font:{size:9},color:'#888',maxRotation:45,autoSkip:true},grid:{display:false}},
+    y:{ticks:{font:{size:10},color:'#888',callback:v=>'$'+v},grid:{color:'rgba(128,128,128,0.1)'}}
+  };
+  if(hasUptime){
+    const validUp=uptimeVals.filter(v=>v!=null);
+    const minUp=Math.floor(Math.max(0,Math.min(...validUp)-2));
+    expandScales.y2={position:'right',min:minUp,max:100,ticks:{font:{size:9},color:'#F0A500',callback:v=>v+'%'},grid:{display:false}};
+  }
   expandCharts[licenseId]=new Chart(document.getElementById('expand-chart-'+shortId),{
     type:'bar',
-    data:{
-      labels:dates.map(d=>dispDate(d).slice(5)),
-      datasets:[
-        {data:amounts, backgroundColor:dates.map(d=>d===maxDate?'#F0A500':color+'99'), borderRadius:2, borderSkipped:false},
-        {type:'line', data:dates.map(()=>+avgLine.toFixed(4)), borderColor:'rgba(150,150,150,0.5)', borderWidth:1, borderDash:[3,3], pointRadius:0, fill:false}
-      ]
-    },
+    data:{labels:dates.map(d=>dispDate(d).slice(5)),datasets:expandDatasets},
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}, tooltip:{...tooltipStyle(),callbacks:{
         title:ctx=>dispDate(dates[ctx[0].dataIndex]),
-        label:ctx=>ctx.datasetIndex===0?'$'+ctx.parsed.y.toFixed(4):'Avg: $'+ctx.parsed.y.toFixed(4)
+        label:ctx=>{
+          if(ctx.datasetIndex===0) return 'Earned: $'+ctx.parsed.y.toFixed(4);
+          if(ctx.datasetIndex===1) return 'Avg: $'+ctx.parsed.y.toFixed(4);
+          return 'Uptime: '+ctx.parsed.y.toFixed(1)+'%';
+        }
       }}},
-      scales:{
-        x:{ticks:{font:{size:9},color:'#888',maxRotation:45,autoSkip:true},grid:{display:false}},
-        y:{ticks:{font:{size:10},color:'#888',callback:v=>'$'+v},grid:{color:'rgba(128,128,128,0.1)'}}
-      }
+      scales:expandScales
     }
   });
 }
@@ -1527,6 +1773,77 @@ function renderDashboard(stored){
   const sortedDates=Object.keys(dayMap).sort();
   const dVals=sortedDates.map(d=>+(dayMap[d]/1e6).toFixed(2));
   const avgD=grandTotal/1e6/totalDays;
+
+  // ── Uptime charts ─────────────────────────────────────────────────────
+  // Calculate avg uptime per device and per group for the filtered period
+  const devUptimeData=devices.map(d=>({
+    id:d.id,
+    name:devName(d.id),
+    group:devGroup(d.id),
+    avgUptime:avgUptimeForDevice(d.id,d.daily)
+  })).filter(d=>d.avgUptime!=null).sort((a,b)=>b.avgUptime-a.avgUptime);
+
+  const uptimeChartRow=document.getElementById('uptime-chart-row');
+  if(fetchUptimeEnabled&&devUptimeData.length>0){
+    uptimeChartRow.style.display='';
+
+    // Avg uptime per device
+    if(uptimeDevChart) uptimeDevChart.destroy();
+    const minDevUp=Math.floor(Math.max(0,Math.min(...devUptimeData.map(d=>d.avgUptime*100))-2));
+    uptimeDevChart=new Chart(document.getElementById('uptimeDevChart'),{
+      type:'bar',
+      data:{
+        labels:devUptimeData.map(d=>d.name),
+        datasets:[{
+          data:devUptimeData.map(d=>+(d.avgUptime*100).toFixed(2)),
+          backgroundColor:devUptimeData.map(d=>devColor(d.id)+'CC'),
+          borderRadius:3
+        }]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...tooltipStyle(),callbacks:{label:ctx=>ctx.parsed.y.toFixed(2)+'%'}}},
+        scales:{
+          x:{ticks:{font:{size:9},color:'#888',maxRotation:45,autoSkip:true},grid:{display:false}},
+          y:{min:minDevUp,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(128,128,128,0.1)'}}
+        }
+      }
+    });
+
+    // Avg uptime per group
+    const groups=[...new Set(devices.map(d=>devGroup(d.id)))];
+    const grpUptimeData=groups.map(g=>({
+      group:g,
+      avgUptime:avgUptimeForGroup(g,devices)
+    })).filter(d=>d.avgUptime!=null).sort((a,b)=>b.avgUptime-a.avgUptime);
+
+    if(uptimeGrpChart) uptimeGrpChart.destroy();
+    if(grpUptimeData.length>0){
+      const minGrpUp=Math.floor(Math.max(0,Math.min(...grpUptimeData.map(d=>d.avgUptime*100))-2));
+      uptimeGrpChart=new Chart(document.getElementById('uptimeGrpChart'),{
+        type:'bar',
+        data:{
+          labels:grpUptimeData.map(d=>d.group),
+          datasets:[{
+            data:grpUptimeData.map(d=>+(d.avgUptime*100).toFixed(2)),
+            backgroundColor:grpUptimeData.map(d=>(userGroups[d.group]&&userGroups[d.group].color)||'#888780'),
+            borderRadius:3
+          }]
+        },
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{...tooltipStyle(),callbacks:{label:ctx=>ctx.parsed.y.toFixed(2)+'%'}}},
+          scales:{
+            x:{ticks:{font:{size:10},color:'#888'},grid:{display:false}},
+            y:{min:minGrpUp,max:100,ticks:{font:{size:10},color:'#888',callback:v=>v+'%'},grid:{color:'rgba(128,128,128,0.1)'}}
+          }
+        }
+      });
+    }
+  } else {
+    uptimeChartRow.style.display='none';
+    if(uptimeDevChart){uptimeDevChart.destroy();uptimeDevChart=null;}
+    if(uptimeGrpChart){uptimeGrpChart.destroy();uptimeGrpChart=null;}
+  }
+
   if(timeChart)timeChart.destroy();
   timeChart=new Chart(document.getElementById('timeChart'),{
     type:'bar',
@@ -1566,6 +1883,33 @@ function toggleImportAccordion(){
   body.classList.toggle('open',!isOpen);
   btn.classList.toggle('open',!isOpen);
 }
+
+function showDevTip(td){
+  const tip=document.getElementById('dev-tooltip');
+  const txt=td.dataset.tip;
+  if(!txt){tip.style.display='none';return;}
+  const dark=document.body.classList.contains('dark');
+  tip.style.background=dark?'#ffffff':'#1a1a1a';
+  tip.style.color=dark?'#1a1a1a':'#f0f0f0';
+  tip.textContent=txt;
+  const r=td.getBoundingClientRect();
+  tip.style.display='block';
+  tip.style.left=r.left+'px';
+  tip.style.top=(r.bottom+4)+'px';
+}
+function hideDevTip(){
+  document.getElementById('dev-tooltip').style.display='none';
+}
+function toggleDevTip(td, e){
+  e.preventDefault();
+  const tip=document.getElementById('dev-tooltip');
+  if(tip.style.display==='block'){hideDevTip();return;}
+  showDevTip(td);
+}
+// Close dev tip on outside tap
+document.addEventListener('touchstart', e=>{
+  if(!e.target.closest('.td-device')) hideDevTip();
+},{passive:true});
 
 function toggleSettings(){
   const body=document.getElementById('settings-body');
@@ -2064,6 +2408,7 @@ function initPrefs(){
 
 renderDashSelect();
 loadMapping();
+uptimeData=loadUptime();
 globalStored=loadStored();
 if(Object.keys(globalStored).length>0){
   document.getElementById('status').textContent=Object.keys(globalStored).length.toLocaleString()+' entries loaded.';
@@ -2086,11 +2431,11 @@ initTableTouchLock();
     const container=document.querySelector('.container');
     if(container){ container.style.display='none'; void container.offsetWidth; container.style.display=''; }
     // Reset canvas dimensions so they don't retain old size
-    ['barChart','pieChart','timeChart'].forEach(id=>{
+    ['barChart','pieChart','timeChart','uptimeDevChart','uptimeGrpChart'].forEach(id=>{
       const canvas=document.getElementById(id);
       if(canvas){ canvas.style.width='100%'; canvas.style.height=''; canvas.removeAttribute('width'); canvas.removeAttribute('height'); }
     });
-    [barChart,pieChart,timeChart].forEach(c=>{ if(c) c.resize(); });
+    [barChart,pieChart,timeChart,uptimeDevChart,uptimeGrpChart].forEach(c=>{ if(c) c.resize(); });
     Object.values(expandCharts).forEach(c=>{ if(c) c.resize(); });
     if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
     lastW=window.innerWidth;
