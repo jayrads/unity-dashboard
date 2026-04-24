@@ -1151,19 +1151,20 @@ async function fetchAll(){
 
   saveStored(stored); globalStored=stored;
 
-  // Step 3: Fetch uptime for licenses with new reward dates
-  // Find licenses that have reward dates not yet in uptime history
+  // Step 3: Fetch uptime for licenses with new reward dates (only if enabled)
   const licensesNeedingUptime=new Set();
   const missingDatesByLicense={};
-  Object.values(stored).forEach(e=>{
-    const lid=e.licenseId;
-    const hasUptime=uptimeData[lid]&&uptimeData[lid].history&&uptimeData[lid].history[e.date]!=null;
-    if(!hasUptime){
-      licensesNeedingUptime.add(lid);
-      if(!missingDatesByLicense[lid]) missingDatesByLicense[lid]=[];
-      missingDatesByLicense[lid].push(e.date);
-    }
-  });
+  if(fetchUptimeEnabled){
+    Object.values(stored).forEach(e=>{
+      const lid=e.licenseId;
+      const hasUptime=uptimeData[lid]&&uptimeData[lid].history&&uptimeData[lid].history[e.date]!=null;
+      if(!hasUptime){
+        licensesNeedingUptime.add(lid);
+        if(!missingDatesByLicense[lid]) missingDatesByLicense[lid]=[];
+        missingDatesByLicense[lid].push(e.date);
+      }
+    });
+  }
 
   if(fetchUptimeEnabled&&licensesNeedingUptime.size>0){
     let done=0;
@@ -1176,7 +1177,8 @@ async function fetchAll(){
   }
 
   btn.disabled=false;
-  fetchEl.textContent='✓ Done — '+totalAdded+' new entries'+(licensesNeedingUptime.size>0?' · uptime synced for '+licensesNeedingUptime.size+' device'+(licensesNeedingUptime.size!==1?'s':''):'')+'.'  ;
+  const uptimeSyncMsg=fetchUptimeEnabled&&licensesNeedingUptime.size>0?' · uptime synced for '+licensesNeedingUptime.size+' device'+(licensesNeedingUptime.size!==1?'s':''):'';
+  fetchEl.textContent='✓ Done — '+totalAdded+' new entries'+uptimeSyncMsg+'.';
   if(Object.keys(stored).length>0) renderDashboard(stored);
 }
 
