@@ -178,7 +178,7 @@
   .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
   .section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px; }
-  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: auto; margin-bottom: 20px; }
+  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: scroll; overflow-y: scroll; margin-bottom: 20px; -webkit-overflow-scrolling: touch; will-change: scroll-position; }
   @media(max-width:700px){ .table-wrap { max-height: 70vh; } }
   .table-wrap.scroll-x { touch-action: pan-x; overflow-y: hidden; }
   .table-wrap.scroll-y { touch-action: pan-y; overflow-x: hidden; }
@@ -283,7 +283,7 @@
   .expand-inner { padding:14px 20px 18px; }
   .expand-title { font-size:12px; font-weight:500; color:var(--text-mid); margin-bottom:10px; }
   .expand-chart-wrap { position:relative; width:100%; height:140px; margin-bottom:12px; }
-  .expand-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .expand-table { width:40%; min-width:400px; border-collapse:collapse; font-size:11px; }
   .expand-table th { text-align:left; font-size:10px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; padding:4px 8px; border-bottom:0.5px solid var(--border); }
   .expand-table td { padding:4px 8px; border-bottom:0.5px solid var(--border); color:var(--text-main); }
   .expand-table tr:last-child td { border-bottom:none; }
@@ -490,6 +490,7 @@
   <div id="dashboard">
     <div class="filter-row">
       <label>Show:</label>
+      <button class="fbtn" id="fbtn-today" onclick="setPreset('today',this)" style="display:none">Current day</button>
       <button class="fbtn" onclick="setPreset('prev',this)">Prev day</button>
       <button class="fbtn active" onclick="setPreset(7,this)">Last 7 days</button>
       <button class="fbtn" onclick="setPreset(14,this)">Last 14 days</button>
@@ -839,6 +840,9 @@ function devSplit(id){ const s=userMapping[id]&&userMapping[id].split; return (s
 function devNotes(id){ return (userMapping[id]&&userMapping[id].notes)||''; }
 function fmt(m){return '$'+(m/1e6).toFixed(2);}
 function fmtDate(s){return s?s.slice(0,10):'?';}
+function todayRewardDate(){ return new Date().toISOString().slice(0,10); }
+function yesterdayRewardDate(){ const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function nDaysAgoRewardDate(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
 function fmtUptime(v){ if(v==null||v===undefined||isNaN(v)) return '—'; return (v*100).toFixed(1)+'%'; }
 function avgUptimeForDevice(licenseId, daily){
   // Average uptime across dates in the current filtered period that have uptime data
@@ -1277,7 +1281,8 @@ function setPreset(preset, btn){
   document.getElementById('date-to').value='';
   const dbi=document.getElementById('days-back-input');
   if(dbi){ dbi.value=''; dbi.classList.remove('active'); }
-  if(preset==='prev'){filterMode='prev';}
+  if(preset==='today'){filterMode='today';}
+  else if(preset==='prev'){filterMode='prev';}
   else if(preset===0){filterMode='all';filterDays=0;}
   else{filterMode='days';filterDays=preset;}
   renderDashboard(globalStored);
@@ -1331,36 +1336,41 @@ function filterEntries(stored){
   // Apply floor date first — hard lower bound for this dashboard
   const rawEntries=Object.values(stored);
   const entries=floorDate?rawEntries.filter(e=>e.date&&e.date>=floorDate):rawEntries;
-  const allDates=entries.map(e=>e.date).filter(Boolean).sort();
-  const latest=allDates[allDates.length-1];
+  const today=todayRewardDate();
+  const yesterday=yesterdayRewardDate();
   const rl=document.getElementById('range-label');
 
-  if(filterMode==='all'){
-    rl.textContent='';
-    return entries;
+  // Show/hide current day button based on whether today has any entries
+  const todayBtn=document.getElementById('fbtn-today');
+  if(todayBtn){
+    const hasToday=entries.some(e=>e.date===today);
+    todayBtn.style.display=hasToday?'':'none';
+  }
+
+  if(filterMode==='today'){
+    rl.textContent=dispDate(today);
+    return entries.filter(e=>e.date===today);
   }
   if(filterMode==='prev'){
-    if(!latest){rl.textContent='';return entries;}
-    // Most recent date with allocations
-    const uniqueDates=[...new Set(allDates)].sort();
-    const prevDate=uniqueDates[uniqueDates.length-1];
-    rl.textContent=dispDate(prevDate);
-    return entries.filter(e=>e.date===prevDate);
+    // Yesterday only — today always excluded
+    rl.textContent=dispDate(yesterday);
+    return entries.filter(e=>e.date===yesterday);
   }
   if(filterMode==='days'||filterMode==='daysback'){
-    if(!latest){rl.textContent='';return entries;}
-    const cutoff=new Date(latest);
-    cutoff.setDate(cutoff.getDate()-(filterDays-1));
-    const cutoffStr=cutoff.toISOString().slice(0,10);
-    rl.textContent=dispDate(cutoffStr)+' → '+dispDate(latest);
-    return entries.filter(e=>e.date>=cutoffStr);
+    // N days back starting from yesterday — today always excluded
+    const cutoff=nDaysAgoRewardDate(filterDays);
+    rl.textContent=dispDate(cutoff)+' → '+dispDate(yesterday);
+    return entries.filter(e=>e.date>=cutoff&&e.date<=yesterday);
   }
   if(filterMode==='custom'){
-    const from=filterFrom||'0000-00-00';
-    const to=filterTo||'9999-99-99';
-    rl.textContent=(filterFrom?dispDate(filterFrom):'start')+' → '+(filterTo?dispDate(filterTo):'end');
-    return entries.filter(e=>e.date>=from&&e.date<=to);
+    const from=filterFrom?rawDate(filterFrom):'';
+    const to=filterTo?rawDate(filterTo):yesterday; // default end to yesterday if not set
+    const displayTo=filterTo?dispDate(filterTo):dispDate(yesterday);
+    rl.textContent=(filterFrom?dispDate(filterFrom):'start')+' → '+displayTo;
+    return entries.filter(e=>(!from||e.date>=from)&&e.date<=to);
   }
+  // All time — includes today
+  rl.textContent='';
   return entries;
 }
 
