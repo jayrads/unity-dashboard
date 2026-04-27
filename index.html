@@ -2402,42 +2402,6 @@ renderMappingTable();
 renderGroupsTable();
 initPrefs();
 
-// ── Table touch direction lock ───────────────────────────────────────────
-(function(){
-  const wrap=document.querySelector('.table-wrap');
-  if(!wrap) return;
-  let startX=0, startY=0, locked=null, scrollLeft=0, scrollTop=0;
-
-  wrap.addEventListener('touchstart', e=>{
-    const t=e.touches[0];
-    startX=t.clientX; startY=t.clientY;
-    scrollLeft=wrap.scrollLeft; scrollTop=wrap.scrollTop;
-    locked=null;
-  },{passive:true});
-
-  wrap.addEventListener('touchmove', e=>{
-    const dx=Math.abs(e.touches[0].clientX-startX);
-    const dy=Math.abs(e.touches[0].clientY-startY);
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist<10) return; // wait for clear intent before locking
-    if(!locked){
-      const angle=Math.abs(Math.atan2(dy,dx)*(180/Math.PI));
-      // Lock if clearly horizontal (<25°) or clearly vertical (>65°)
-      // Allow diagonal (25°-65°) to scroll freely
-      if(angle<25) locked='x';
-      else if(angle>65) locked='y';
-      else locked='both';
-    }
-    if(locked==='x'){
-      wrap.scrollTop=scrollTop; // prevent vertical drift
-    } else if(locked==='y'){
-      wrap.scrollLeft=scrollLeft; // prevent horizontal drift
-    }
-  },{passive:true});
-
-  wrap.addEventListener('touchend', ()=>{ locked=null; },{passive:true});
-})();
-
 // ── Orientation / resize handling ────────────────────────────────────────
 (function(){
   let lastW=window.innerWidth;
