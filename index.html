@@ -178,10 +178,10 @@
   .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
   .section-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px; }
-  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: scroll; overflow-y: scroll; margin-bottom: 20px; -webkit-overflow-scrolling: touch; will-change: scroll-position; }
+  .table-wrap { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: auto; margin-bottom: 20px; -webkit-overflow-scrolling: touch; will-change: scroll-position; }
   @media(max-width:700px){ .table-wrap { max-height: 70vh; } }
-  .table-wrap.scroll-x { touch-action: pan-x; overflow-y: hidden; }
-  .table-wrap.scroll-y { touch-action: pan-y; overflow-x: hidden; }
+  @media(min-width:701px){ .table-wrap { overflow-x: auto; overflow-y: visible; } }
+
   .lb-table thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-thead); }
   .lb-table thead th.th-device { z-index: 4; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
@@ -2357,38 +2357,7 @@ function applyTheme(theme){
   if(Object.keys(globalStored).length>0) renderDashboard(globalStored);
 }
 
-function initTableTouchLock(){
-  const wrap=document.querySelector('.table-wrap');
-  if(!wrap) return;
-  let startX=0, startY=0, locked=null;
 
-  wrap.addEventListener('touchstart', e=>{
-    startX=e.touches[0].clientX;
-    startY=e.touches[0].clientY;
-    locked=null;
-    wrap.classList.remove('scroll-x','scroll-y');
-  },{passive:true});
-
-  wrap.addEventListener('touchmove', e=>{
-    if(locked) return;
-    const dx=Math.abs(e.touches[0].clientX-startX);
-    const dy=Math.abs(e.touches[0].clientY-startY);
-    // Need at least 6px movement before locking to avoid accidental locks
-    if(dx<6&&dy<6) return;
-    if(dx>dy){
-      locked='x';
-      wrap.classList.add('scroll-x');
-    } else {
-      locked='y';
-      wrap.classList.add('scroll-y');
-    }
-  },{passive:true});
-
-  wrap.addEventListener('touchend', ()=>{
-    locked=null;
-    wrap.classList.remove('scroll-x','scroll-y');
-  },{passive:true});
-}
 
 function initPrefs(){
   const p=loadPrefs();
@@ -2432,7 +2401,6 @@ if(savedRefresh) document.getElementById('refresh-token-input').value=savedRefre
 renderMappingTable();
 renderGroupsTable();
 initPrefs();
-initTableTouchLock();
 
 // ── Orientation / resize handling ────────────────────────────────────────
 (function(){
